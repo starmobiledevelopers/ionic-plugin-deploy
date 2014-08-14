@@ -9,8 +9,8 @@
     <description>Ionic Update Plugin</description>
     <license>Apache 2.0</license>
     <keywords>Ionic,update</keywords>
-    <repo>https://github.com/driftyco/ionic-service-update</repo>
-    <issue>https://github.com/driftyco/ionic-service-update/issues</issue>
+    <repo>https://github.com/driftyco/ionic-plugins-update</repo>
+    <issue>https://github.com/driftyco/ionic-plugins-update/issues</issue>
 
     <js-module src="www/update.js" name="UpdatePlugin">
         <clobbers target="updateplugin" />
