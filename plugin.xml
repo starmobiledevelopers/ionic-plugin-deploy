@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+    xmlns:rim="http://www.blackberry.com/ns/widgets"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    id="org.apache.cordova.device"
+    version="0.2.10">
+    <name>Ionic Update Plugin</name>
+    <description>Ionic Update Plugin</description>
+    <license>Apache 2.0</license>
+    <keywords>Ionic,update</keywords>
+    <repo>https://github.com/driftyco/ionic-service-update</repo>
+    <issue>https://github.com/driftyco/ionic-service-update/issues</issue>
+
+    <js-module src="www/update.js" name="UpdatePlugin">
+        <clobbers target="updateplugin" />
+    </js-module>
+
+    <!-- android -->
+    <platform name="android">
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="UpdatePlugin">
+                <param name="android-package" value="com.ionic.update.UpdatePlugin"/>
+            </feature>
+        </config-file>
+
+        <source-file src="src/android/UpdatePlugin.java" target-dir="src/com/ionic/update" />
+    </platform>
+
+    <!-- ios -->
+
+</plugin>
