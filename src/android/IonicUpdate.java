@@ -9,6 +9,7 @@ import android.util.Log;
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
+import org.apache.cordova.PluginResult;
 import org.apache.cordova.CordovaWebView;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -29,6 +30,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import java.lang.Math;
 
 public class IonicUpdate extends CordovaPlugin {
     Context myContext = null;
@@ -248,6 +250,11 @@ public class IonicUpdate extends CordovaPlugin {
                 ZipInputStream zipInputStream = new ZipInputStream(inputStream);
                 ZipEntry zipEntry = null;
 
+                Integer finalSize = (int) new File(this.myContext.getFileStreamPath(zip).getAbsolutePath().toString()).length();
+                Log.i("FILE_SIZE", finalSize.toString());
+
+                float completed = (float) 0;
+
                 // Get the full path to the internal storage
                 String filesDir = this.myContext.getFilesDir().toString();
 
@@ -257,6 +264,9 @@ public class IonicUpdate extends CordovaPlugin {
                 Log.i("UNZIP_DIR", versionDir.getAbsolutePath().toString());
 
                 while ((zipEntry = zipInputStream.getNextEntry()) != null) {
+
+                    completed += Math.abs(zipEntry.getSize());
+
                     /*File file = new File(location + zipEntry.getName());
                     Log.i("UNZIP_STEP", "File Location: " + file);
                     file.getParentFile().mkdirs();*/
@@ -269,6 +279,10 @@ public class IonicUpdate extends CordovaPlugin {
                     for (int bits = zipInputStream.read(); bits != -1; bits = zipInputStream.read()) {
                         fileOutputStream.write(bits);
                     }
+
+                    PluginResult progressResult = new PluginResult(PluginResult.Status.OK, (int) ((completed / finalSize)  * 100));
+                    progressResult.setKeepCallback(true);
+                    callbackContext.sendPluginResult(progressResult);
 
                     zipInputStream.closeEntry();
                     fileOutputStream.close();
@@ -328,9 +342,9 @@ public class IonicUpdate extends CordovaPlugin {
                     if (fileLength > 0) {
                         int progress = (int) (total * 100 / fileLength);
                         android.util.Log.i("DOWNLOAD_PROGRESS", Integer.toString(progress));
-                        /*PluginResult progressResult = new PluginResult(PluginResult.Status.OK, (int) (total * 100 / fileLength));
+                        PluginResult progressResult = new PluginResult(PluginResult.Status.OK, (int) (total * 100 / fileLength));
                         progressResult.setKeepCallback(true);
-                        callbackContext.sendPluginResult(progressResult);*/
+                        callbackContext.sendPluginResult(progressResult);
                     }
                 }
             } catch (Exception e) {
@@ -361,7 +375,7 @@ public class IonicUpdate extends CordovaPlugin {
 
             prefs.edit().putString("uuid", uuid).apply();
 
-            callbackContext.success("Zip file download complete");
+            callbackContext.success("done");
             return null;
         }
     }
