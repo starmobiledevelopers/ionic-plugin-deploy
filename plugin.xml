@@ -2,7 +2,7 @@
 
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
     id="com.ionic.update"
-    version="1.0.2.1">
+    version="0.0.1">
     <name>Ionic Update Plugin</name>
     <description>Ionic Update Plugin</description>
     <license>Apache 2.0</license>

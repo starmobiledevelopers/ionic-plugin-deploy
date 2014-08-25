@@ -1,4 +1,4 @@
-var updatePlugin = {
+var UpdatePlugin = {
     checkForUpdates: function(success, failure) {
         cordova.exec(
             success,
@@ -37,4 +37,4 @@ var updatePlugin = {
     }
 }
 
-module.exports = updatePlugin;
+module.exports = UpdatePlugin;
