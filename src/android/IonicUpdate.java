@@ -30,7 +30,7 @@ import java.net.URL;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-public class UpdatePlugin extends CordovaPlugin {
+public class IonicUpdate extends CordovaPlugin {
     Context myContext = null;
 
     /**
