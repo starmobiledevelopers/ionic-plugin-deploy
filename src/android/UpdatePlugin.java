@@ -178,7 +178,7 @@ public class UpdatePlugin extends CordovaPlugin {
         HttpURLConnection urlConnection = null;
 
         try {
-            String server = "http://7b5ed69d.ngrok.com";
+            String server = "http://ionic-dash-local.ngrok.com";
 
 
             URL url = new URL(server + endpoint);
