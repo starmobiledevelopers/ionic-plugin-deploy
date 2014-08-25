@@ -36,3 +36,5 @@ var updatePlugin = {
     	);
     }
 }
+
+module.exports = updatePlugin;
