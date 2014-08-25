@@ -10,8 +10,8 @@
     <repo>https://github.com/driftyco/ionic-plugins-update</repo>
     <issue>https://github.com/driftyco/ionic-plugins-update/issues</issue>
 
-    <js-module src="www/ionicupdate.js" name="ionicupdate">
-        <clobbers target="ionicupdate" />
+    <js-module src="www/ionicupdate.js" name="IonicUpdate">
+        <clobbers target="IonicUpdate" />
     </js-module>
 
     <!-- android -->

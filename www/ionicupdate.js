@@ -1,9 +1,9 @@
-var UpdatePlugin = {
+var IonicUpdate = {
     checkForUpdates: function(success, failure) {
         cordova.exec(
             success,
             failure,
-            'UpdatePlugin',
+            'IonicUpdate',
             'checkForUpdates',
             []
         );
@@ -12,7 +12,7 @@ var UpdatePlugin = {
     	cordova.exec(
     		success,
     		failure,
-    		'UpdatePlugin',
+    		'IonicUpdate',
     		'download',
     		[]
     	);
@@ -21,7 +21,7 @@ var UpdatePlugin = {
     	cordova.exec(
     		success,
     		failure,
-    		'UpdatePlugin',
+    		'IonicUpdate',
     		'redirect',
     		[]
     	);
@@ -30,11 +30,11 @@ var UpdatePlugin = {
     	cordova.exec(
     		success,
     		failure,
-    		'UpdatePlugin',
+    		'IonicUpdate',
     		'read',
     		[]
     	);
     }
 }
 
-module.exports = UpdatePlugin;
+module.exports = IonicUpdate;
