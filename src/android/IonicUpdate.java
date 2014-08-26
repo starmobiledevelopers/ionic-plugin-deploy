@@ -47,13 +47,6 @@ public class IonicUpdate extends CordovaPlugin {
         super.initialize(cordova, webView);
 
         this.myContext = this.cordova.getActivity().getApplicationContext();
-        /*boolean updatesAvailable = checkForUpdates();
-
-        // If there are no updates available, check to see if any updates have been downloaded
-        // and redirect to the updated version
-        if (!updatesAvailable) {
-            webView.loadUrlIntoView("http://android.com/");
-        }*/
     }
 
     /**
@@ -66,52 +59,33 @@ public class IonicUpdate extends CordovaPlugin {
      */
     public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
         if (action.equals("checkForUpdates")) {
-            //Boolean result = checkForUpdates();
-
-            /*String FILENAME = "hello_file";
-            String string = "hello world!";
-
-            try {
-                FileOutputStream fos = this.myContext.openFileOutput(FILENAME, Context.MODE_PRIVATE);
-                fos.write(string.getBytes());
-                fos.close();
-            } catch (FileNotFoundException e) {
-                //TODO
-            } catch (IOException e) {
-                //TODO
-            }*/
-
-            //downloadUpdate(callbackContext);
-
-            //unzip("www.zip", Environment.getExternalStorageDirectory() + "/unzipped/");
-
             // Check for updates in a background thread
             cordova.getThreadPool().execute(new Runnable() {
-              public void run() {
-                checkForUpdates(callbackContext);
-              }
+                public void run() {
+                    checkForUpdates(callbackContext);
+                }
             });
             return true;
         } else if (action.equals("download")) {
             // Download in a background thread
             cordova.getThreadPool().execute(new Runnable() {
-              public void run() {
-                downloadUpdate(callbackContext);
-              }
+                public void run() {
+                    downloadUpdate(callbackContext);
+                }
             });
 
             return true;
         } else if (action.equals("extract")) {
             // Extract in a background thread
             cordova.getThreadPool().execute(new Runnable() {
-              public void run() {
-                SharedPreferences prefs = getPreferences();
+                public void run() {
+                    SharedPreferences prefs = getPreferences();
 
-                // Set the saved uuid to the most recently acquired upstream_uuid
-                String uuid = prefs.getString("uuid", "");
+                    // Set the saved uuid to the most recently acquired upstream_uuid
+                    String uuid = prefs.getString("uuid", "");
 
-                unzip("www.zip", uuid, callbackContext);
-              }
+                    unzip("www.zip", uuid, callbackContext);
+                }
             });
             return true;
         } else if (action.equals("redirect")) {
@@ -120,7 +94,6 @@ public class IonicUpdate extends CordovaPlugin {
             SharedPreferences prefs = getPreferences();
 
             String uuid = prefs.getString("uuid", "");
-            //webView.loadUrlIntoView("file://" + Environment.getExternalStorageDirectory() + "/" + uuid + "/index.html");
             File versionDir = this.myContext.getDir(uuid, Context.MODE_PRIVATE);
             Log.i("REDIRECT_1", versionDir.getAbsolutePath().toString() + "index.html");
             Log.i("REDIRECT", versionDir.toURI() + "index.html");
@@ -183,7 +156,6 @@ public class IonicUpdate extends CordovaPlugin {
 
         try {
             String server = "http://ionic-dash-local.ngrok.com";
-
 
             URL url = new URL(server + endpoint);
             urlConnection = (HttpURLConnection) url.openConnection();
@@ -324,20 +296,11 @@ public class IonicUpdate extends CordovaPlugin {
                 // download the file
                 input = connection.getInputStream();
                 output = this.myContext.openFileOutput("www.zip", Context.MODE_PRIVATE);
-                /*fos.write(string.getBytes());
-                fos.close();
-                output = new FileOutputStream("/sdcard/file_name.extension");*/
-                //output = new FileOutputStream(Environment.getExternalStorageDirectory() + "/www.zip");
 
                 byte data[] = new byte[4096];
                 long total = 0;
                 int count;
                 while ((count = input.read(data)) != -1) {
-                    /*// allow canceling with back button
-                    if (isCancelled()) {
-                        input.close();
-                        return null;
-                    }*/
                     total += count;
 
                     output.write(data, 0, count);
@@ -372,10 +335,6 @@ public class IonicUpdate extends CordovaPlugin {
 
             // Set the saved uuid to the most recently acquired upstream_uuid
             String uuid = prefs.getString("upstream_uuid", "");
-
-            //this.unzip(Environment.getExternalStorageDirectory() + "/www.zip", Environment.getExternalStorageDirectory() + "/" + uuid + "/");
-
-            //this.unzip("www.zip", uuid);
 
             prefs.edit().putString("uuid", uuid).apply();
 
