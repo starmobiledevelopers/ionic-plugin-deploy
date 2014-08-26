@@ -1,10 +1,19 @@
 var IonicUpdate = {
-    checkForUpdates: function(success, failure) {
+    initialize: function(app_id, success, failure) {
+      cordova.exec(
+        success,
+        failure,
+        'IonicUpdate',
+        'initialize',
+        [app_id]
+      );
+    },
+    check: function(success, failure) {
         cordova.exec(
             success,
             failure,
             'IonicUpdate',
-            'checkForUpdates',
+            'check',
             []
         );
     },

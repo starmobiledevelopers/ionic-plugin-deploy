@@ -37,6 +37,7 @@ import java.lang.Math;
 public class IonicUpdate extends CordovaPlugin {
     String server = "http://ionic-dash-local.ngrok.com";
     Context myContext = null;
+    String app_id = null;
     boolean debug = false;
 
     /**
@@ -50,6 +51,9 @@ public class IonicUpdate extends CordovaPlugin {
         super.initialize(cordova, webView);
 
         this.myContext = this.cordova.getActivity().getApplicationContext();
+        SharedPreferences prefs = getPreferences();
+
+        this.app_id = prefs.getString("app_id", "");
     }
 
     /**
@@ -61,7 +65,19 @@ public class IonicUpdate extends CordovaPlugin {
      * @return                  True if the action was valid, false if not.
      */
     public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
-        if (action.equals("checkForUpdates")) {
+        if (action.equals("initialize")) {
+            // Save the app id if it's not already set
+            SharedPreferences prefs = getPreferences();
+
+            String app_id = prefs.getString("app_id", "");
+
+            if (app_id == "") {
+                this.app_id = args.getString(0);
+                prefs.edit().putString("app_id", this.app_id).apply();
+            }
+
+            return true;
+        } else if (action.equals("check")) {
             // Check for updates in a background thread
             cordova.getThreadPool().execute(new Runnable() {
                 public void run() {
@@ -108,7 +124,7 @@ public class IonicUpdate extends CordovaPlugin {
     }
 
     private void checkForUpdates(CallbackContext callbackContext) {
-        String endpoint = "/api/v1/app/3ccaa3e3/updates/check";
+        String endpoint = "/api/v1/app/" + this.app_id + "/updates/check";
 
         // Request shared preferences for this app id
         // Also, is there a way to pull the package name and fill it in on build?
@@ -137,7 +153,7 @@ public class IonicUpdate extends CordovaPlugin {
     }
 
     private void downloadUpdate(CallbackContext callbackContext) {
-        String endpoint = "/api/v1/app/3ccaa3e3/updates/download";
+        String endpoint = "/api/v1/app/" + this.app_id + "/updates/download";
 
         try {
             JSONObject json = httpRequest(endpoint);
@@ -183,7 +199,7 @@ public class IonicUpdate extends CordovaPlugin {
     private SharedPreferences getPreferences() {
         // Request shared preferences for this app id
         SharedPreferences prefs = this.myContext.getSharedPreferences(
-                "com.ionic.3ccaa3e3", Context.MODE_PRIVATE
+                "com.ionic." + this.app_id, Context.MODE_PRIVATE
         );
 
         return prefs;
