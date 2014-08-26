@@ -28,6 +28,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.zip.ZipFile;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.lang.Math;
@@ -63,7 +64,7 @@ public class IonicUpdate extends CordovaPlugin {
      * @param callbackContext   The callback id used when calling back into JavaScript.
      * @return                  True if the action was valid, false if not.
      */
-    public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
+    public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
         if (action.equals("checkForUpdates")) {
             //Boolean result = checkForUpdates();
 
@@ -84,10 +85,34 @@ public class IonicUpdate extends CordovaPlugin {
 
             //unzip("www.zip", Environment.getExternalStorageDirectory() + "/unzipped/");
 
-            this.checkForUpdates(callbackContext);
+            // Check for updates in a background thread
+            cordova.getThreadPool().execute(new Runnable() {
+              public void run() {
+                checkForUpdates(callbackContext);
+              }
+            });
             return true;
         } else if (action.equals("download")) {
-            this.downloadUpdate(callbackContext);
+            // Download in a background thread
+            cordova.getThreadPool().execute(new Runnable() {
+              public void run() {
+                downloadUpdate(callbackContext);
+              }
+            });
+
+            return true;
+        } else if (action.equals("extract")) {
+            // Extract in a background thread
+            cordova.getThreadPool().execute(new Runnable() {
+              public void run() {
+                SharedPreferences prefs = getPreferences();
+
+                // Set the saved uuid to the most recently acquired upstream_uuid
+                String uuid = prefs.getString("uuid", "");
+
+                unzip("www.zip", uuid, callbackContext);
+              }
+            });
             return true;
         } else if (action.equals("redirect")) {
             // In here I want to change unzipped to be the uuid of the current version as defined
@@ -100,29 +125,6 @@ public class IonicUpdate extends CordovaPlugin {
             Log.i("REDIRECT_1", versionDir.getAbsolutePath().toString() + "index.html");
             Log.i("REDIRECT", versionDir.toURI() + "index.html");
             webView.loadUrlIntoView(versionDir.toURI() + "index.html");
-            return true;
-        } else if (action.equals("read")) {
-            String file_contents = "";
-
-            try {
-                FileInputStream in = this.myContext.openFileInput("hello_file");
-                InputStreamReader inputStreamReader = new InputStreamReader(in);
-                BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = bufferedReader.readLine()) != null) {
-                    sb.append(line);
-                }
-                inputStreamReader.close();
-
-                file_contents = sb.toString();
-            } catch (FileNotFoundException e) {
-                //TODO
-            } catch (IOException e) {
-                //TODO
-            }
-
-            callbackContext.success(file_contents);
             return true;
         } else {
             return false;
@@ -214,12 +216,6 @@ public class IonicUpdate extends CordovaPlugin {
         return prefs;
     }
 
-    /**
-     * This shouldn't be required anymore...
-     *
-     * @param is
-     * @return
-     */
     private String readStream(InputStream is) {
         try {
             ByteArrayOutputStream bo = new ByteArrayOutputStream();
@@ -234,6 +230,67 @@ public class IonicUpdate extends CordovaPlugin {
         }
     }
 
+    /**
+     * Extract the downloaded archive
+     *
+     * @param zip
+     * @param location
+     */
+    private void unzip(String zip, String location, CallbackContext callbackContext) {
+        try  {
+            FileInputStream inputStream = this.myContext.openFileInput(zip);
+            ZipInputStream zipInputStream = new ZipInputStream(inputStream);
+            ZipEntry zipEntry = null;
+
+            // Something about the way the CLI creates zip files results in the file sizes not being part
+            // of the archive, so we can't get extraction progress via file sizes.
+            /*Integer finalSize = (int) new File(this.myContext.getFileStreamPath(zip).getAbsolutePath().toString()).length();
+            Log.i("FILE_SIZE", finalSize.toString());*/
+
+            // Get the full path to the internal storage
+            String filesDir = this.myContext.getFilesDir().toString();
+
+            // Make the version directory in internal storage
+            File versionDir = this.myContext.getDir(location, Context.MODE_PRIVATE);
+
+            Log.i("UNZIP_DIR", versionDir.getAbsolutePath().toString());
+
+            // Figure out how many entries are in the zip so we can calculate extraction progress
+            ZipFile zipFile = new ZipFile(this.myContext.getFileStreamPath(zip).getAbsolutePath().toString());
+            int entries = zipFile.size();
+
+            Log.i("ENTRIES", Integer.toString(entries));
+
+            int extracted = 0;
+
+            while ((zipEntry = zipInputStream.getNextEntry()) != null) {
+                File newFile = new File(versionDir + "/" + zipEntry.getName());
+                newFile.getParentFile().mkdirs();
+
+                FileOutputStream fileOutputStream = new FileOutputStream(newFile);
+                for (int bits = zipInputStream.read(); bits != -1; bits = zipInputStream.read()) {
+                    fileOutputStream.write(bits);
+                }
+
+                zipInputStream.closeEntry();
+                fileOutputStream.close();
+
+                extracted += 1;
+                Log.i("EXTRACT", Integer.toString(extracted));
+
+                PluginResult progressResult = new PluginResult(PluginResult.Status.OK, (int) (extracted * 100 / entries));
+                progressResult.setKeepCallback(true);
+                callbackContext.sendPluginResult(progressResult);
+            }
+            zipInputStream.close();
+        } catch(Exception e) {
+            //TODO Handle problems..
+            Log.i("UNZIP_STEP", "Exception: " + e.getMessage());
+        }
+
+        callbackContext.success("done");
+    }
+
     private class DownloadTask extends AsyncTask<String, Integer, String> {
         private Context myContext;
         private CallbackContext callbackContext;
@@ -241,59 +298,6 @@ public class IonicUpdate extends CordovaPlugin {
         public DownloadTask(Context context, CallbackContext callbackContext) {
             this.myContext = context;
             this.callbackContext = callbackContext;
-        }
-
-        public void unzip(String zip, String location) {
-            try  {
-                FileInputStream inputStream = this.myContext.openFileInput(zip);
-                //FileInputStream inputStream = new FileInputStream(zip);
-                ZipInputStream zipInputStream = new ZipInputStream(inputStream);
-                ZipEntry zipEntry = null;
-
-                Integer finalSize = (int) new File(this.myContext.getFileStreamPath(zip).getAbsolutePath().toString()).length();
-                Log.i("FILE_SIZE", finalSize.toString());
-
-                float completed = (float) 0;
-
-                // Get the full path to the internal storage
-                String filesDir = this.myContext.getFilesDir().toString();
-
-                // Make the version directory in internal storage
-                File versionDir = this.myContext.getDir(location, Context.MODE_PRIVATE);
-
-                Log.i("UNZIP_DIR", versionDir.getAbsolutePath().toString());
-
-                while ((zipEntry = zipInputStream.getNextEntry()) != null) {
-
-                    completed += Math.abs(zipEntry.getSize());
-
-                    /*File file = new File(location + zipEntry.getName());
-                    Log.i("UNZIP_STEP", "File Location: " + file);
-                    file.getParentFile().mkdirs();*/
-
-                    File newFile = new File(versionDir + "/" + zipEntry.getName());
-                    newFile.getParentFile().mkdirs();
-
-                    //FileOutputStream fileOutputStream = new FileOutputStream(location + zipEntry.getName());
-                    FileOutputStream fileOutputStream = new FileOutputStream(newFile);
-                    for (int bits = zipInputStream.read(); bits != -1; bits = zipInputStream.read()) {
-                        fileOutputStream.write(bits);
-                    }
-
-                    PluginResult progressResult = new PluginResult(PluginResult.Status.OK, (int) ((completed / finalSize)  * 100));
-                    progressResult.setKeepCallback(true);
-                    callbackContext.sendPluginResult(progressResult);
-
-                    zipInputStream.closeEntry();
-                    fileOutputStream.close();
-
-                }
-                zipInputStream.close();
-            } catch(Exception e) {
-                //TODO Handle problems..
-                Log.i("UNZIP_STEP", "Exception: " + e.getMessage());
-            }
-
         }
 
         @Override
@@ -371,7 +375,7 @@ public class IonicUpdate extends CordovaPlugin {
 
             //this.unzip(Environment.getExternalStorageDirectory() + "/www.zip", Environment.getExternalStorageDirectory() + "/" + uuid + "/");
 
-            this.unzip("www.zip", uuid);
+            //this.unzip("www.zip", uuid);
 
             prefs.edit().putString("uuid", uuid).apply();
 

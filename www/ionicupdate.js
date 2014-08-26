@@ -17,21 +17,21 @@ var IonicUpdate = {
     		[]
     	);
     },
+    extract: function(success,failure) {
+      cordova.exec(
+        success,
+        failure,
+        'IonicUpdate',
+        'extract',
+        []
+      );
+    },
     redirect: function(success, failure) {
     	cordova.exec(
     		success,
     		failure,
     		'IonicUpdate',
     		'redirect',
-    		[]
-    	);
-    },
-    read: function(success, failure) {
-    	cordova.exec(
-    		success,
-    		failure,
-    		'IonicUpdate',
-    		'read',
     		[]
     	);
     }
