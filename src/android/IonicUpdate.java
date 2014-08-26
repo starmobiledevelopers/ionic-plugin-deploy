@@ -16,6 +16,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -34,7 +35,9 @@ import java.util.zip.ZipInputStream;
 import java.lang.Math;
 
 public class IonicUpdate extends CordovaPlugin {
+    String server = "http://ionic-dash-local.ngrok.com";
     Context myContext = null;
+    boolean debug = false;
 
     /**
      * Sets the context of the Command. This can then be used to do things like
@@ -95,8 +98,8 @@ public class IonicUpdate extends CordovaPlugin {
 
             String uuid = prefs.getString("uuid", "");
             File versionDir = this.myContext.getDir(uuid, Context.MODE_PRIVATE);
-            Log.i("REDIRECT_1", versionDir.getAbsolutePath().toString() + "index.html");
-            Log.i("REDIRECT", versionDir.toURI() + "index.html");
+            logMessage("REDIRECT_1", versionDir.getAbsolutePath().toString() + "index.html");
+            logMessage("REDIRECT", versionDir.toURI() + "index.html");
             webView.loadUrlIntoView(versionDir.toURI() + "index.html");
             return true;
         } else {
@@ -155,9 +158,7 @@ public class IonicUpdate extends CordovaPlugin {
         HttpURLConnection urlConnection = null;
 
         try {
-            String server = "http://ionic-dash-local.ngrok.com";
-
-            URL url = new URL(server + endpoint);
+            URL url = new URL(this.server + endpoint);
             urlConnection = (HttpURLConnection) url.openConnection();
 
             InputStream in = new BufferedInputStream(urlConnection.getInputStream());
@@ -202,6 +203,11 @@ public class IonicUpdate extends CordovaPlugin {
         }
     }
 
+    private void logMessage(String tag, String message) {
+        if (this.debug == true) {
+            Log.i(tag, message);
+        }
+    }
     /**
      * Extract the downloaded archive
      *
@@ -225,13 +231,13 @@ public class IonicUpdate extends CordovaPlugin {
             // Make the version directory in internal storage
             File versionDir = this.myContext.getDir(location, Context.MODE_PRIVATE);
 
-            Log.i("UNZIP_DIR", versionDir.getAbsolutePath().toString());
+            logMessage("UNZIP_DIR", versionDir.getAbsolutePath().toString());
 
             // Figure out how many entries are in the zip so we can calculate extraction progress
             ZipFile zipFile = new ZipFile(this.myContext.getFileStreamPath(zip).getAbsolutePath().toString());
             int entries = zipFile.size();
 
-            Log.i("ENTRIES", Integer.toString(entries));
+            logMessage("ENTRIES", Integer.toString(entries));
 
             int extracted = 0;
 
@@ -239,16 +245,21 @@ public class IonicUpdate extends CordovaPlugin {
                 File newFile = new File(versionDir + "/" + zipEntry.getName());
                 newFile.getParentFile().mkdirs();
 
+                byte[] buffer = new byte[2048];
+
                 FileOutputStream fileOutputStream = new FileOutputStream(newFile);
-                for (int bits = zipInputStream.read(); bits != -1; bits = zipInputStream.read()) {
-                    fileOutputStream.write(bits);
+                BufferedOutputStream outputBuffer = new BufferedOutputStream(fileOutputStream, buffer.length);
+                int bits;
+                while((bits = zipInputStream.read(buffer, 0, buffer.length)) != -1) {
+                    outputBuffer.write(buffer, 0, bits);
                 }
 
                 zipInputStream.closeEntry();
-                fileOutputStream.close();
+                outputBuffer.flush();
+                outputBuffer.close();
 
                 extracted += 1;
-                Log.i("EXTRACT", Integer.toString(extracted));
+                logMessage("EXTRACT", Integer.toString(extracted));
 
                 PluginResult progressResult = new PluginResult(PluginResult.Status.OK, (int) (extracted * 100 / entries));
                 progressResult.setKeepCallback(true);
@@ -257,7 +268,7 @@ public class IonicUpdate extends CordovaPlugin {
             zipInputStream.close();
         } catch(Exception e) {
             //TODO Handle problems..
-            Log.i("UNZIP_STEP", "Exception: " + e.getMessage());
+            logMessage("UNZIP_STEP", "Exception: " + e.getMessage());
         }
 
         callbackContext.success("done");
@@ -308,7 +319,6 @@ public class IonicUpdate extends CordovaPlugin {
                     // Send the current download progress to a callback
                     if (fileLength > 0) {
                         int progress = (int) (total * 100 / fileLength);
-                        android.util.Log.i("DOWNLOAD_PROGRESS", Integer.toString(progress));
                         PluginResult progressResult = new PluginResult(PluginResult.Status.OK, (int) (total * 100 / fileLength));
                         progressResult.setKeepCallback(true);
                         callbackContext.sendPluginResult(progressResult);
