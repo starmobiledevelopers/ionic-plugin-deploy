@@ -3,42 +3,42 @@ package com.ionic.update;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
-import android.os.Environment;
 import android.util.Log;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
-import org.apache.cordova.PluginResult;
 import org.apache.cordova.CordovaWebView;
+import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.lang.Number;
+import java.lang.NumberFormatException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.zip.ZipFile;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
-import java.lang.Math;
 
 public class IonicUpdate extends CordovaPlugin {
     String server = "http://ionic-dash-local.ngrok.com";
     Context myContext = null;
     String app_id = null;
-    boolean debug = false;
+    boolean debug = true;
 
     /**
      * Sets the context of the Command. This can then be used to do things like
@@ -71,10 +71,13 @@ public class IonicUpdate extends CordovaPlugin {
 
             String app_id = prefs.getString("app_id", "");
 
-            if (app_id == "") {
-                this.app_id = args.getString(0);
-                prefs.edit().putString("app_id", this.app_id).apply();
-            }
+            //if (app_id == "") {
+            this.app_id = args.getString(0);
+            prefs.edit().putString("app_id", this.app_id).apply();
+            // Used for keeping track of the order versions were downloaded
+            int version_count = prefs.getInt("version_count", 0);
+            prefs.edit().putInt("version_count", version_count).apply();
+            //}
 
             return true;
         } else if (action.equals("check")) {
@@ -114,8 +117,10 @@ public class IonicUpdate extends CordovaPlugin {
 
             String uuid = prefs.getString("uuid", "");
             File versionDir = this.myContext.getDir(uuid, Context.MODE_PRIVATE);
+
             logMessage("REDIRECT_1", versionDir.getAbsolutePath().toString() + "index.html");
             logMessage("REDIRECT", versionDir.toURI() + "index.html");
+
             webView.loadUrlIntoView(versionDir.toURI() + "index.html");
             return true;
         } else {
@@ -155,18 +160,127 @@ public class IonicUpdate extends CordovaPlugin {
     private void downloadUpdate(CallbackContext callbackContext) {
         String endpoint = "/api/v1/app/" + this.app_id + "/updates/download";
 
-        try {
-            JSONObject json = httpRequest(endpoint);
+        // First, let's check to see if we have the upstream version already
+        SharedPreferences prefs = getPreferences();
 
-            if (json != null) {
-                String url = json.getString("download_url");
+        String upstream_uuid = prefs.getString("upstream_uuid", "");
 
-                final DownloadTask downloadTask = new DownloadTask(this.myContext, callbackContext);
+        if (upstream_uuid != "" && this.hasVersion(upstream_uuid)) {
+            // Set the current version to the upstream uuid
+            prefs.edit().putString("uuid", upstream_uuid).apply();
+            callbackContext.success("false");
+        } else {
+            try {
+                JSONObject json = httpRequest(endpoint);
 
-                downloadTask.execute(url);
+                if (json != null) {
+                    String url = json.getString("download_url");
+
+                    final DownloadTask downloadTask = new DownloadTask(this.myContext, callbackContext);
+
+                    downloadTask.execute(url);
+                }
+            } catch (JSONException e) {
+                //TODO Handle problems..
             }
-        } catch (JSONException e) {
-            //TODO Handle problems..
+        }
+    }
+
+    /**
+     * Get a list of versions that have been downloaded
+     *
+     * @return
+     */
+    private Set<String> getMyVersions() {
+        SharedPreferences prefs = getPreferences();
+
+        return prefs.getStringSet("my_versions", new HashSet<String>());
+    }
+
+    /**
+     * Check to see if we already have the version to be downloaded
+     *
+     * @param uuid
+     * @return
+     */
+    private boolean hasVersion(String uuid) {
+        Set<String> versions = this.getMyVersions();
+
+        for (String version : versions) {
+            String[] version_string = version.split("|");
+            if (version_string[0] == uuid) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Save a new version string to our list of versions
+     *
+     * @param uuid
+     */
+    private void saveVersion(String uuid) {
+        SharedPreferences prefs = getPreferences();
+
+        Integer version_count = prefs.getInt("version_count", 0) + 1;
+        prefs.edit().putInt("version_count", version_count).apply();
+
+        uuid = uuid + "|" + version_count.toString();
+
+        Set<String> versions = this.getMyVersions();
+
+        versions.add(uuid);
+
+        prefs.edit().putStringSet("my_versions", versions).apply();
+
+        this.cleanupVersions();
+    }
+
+    private void cleanupVersions() {
+        // Let's keep 5 versions around for now
+        SharedPreferences prefs = getPreferences();
+
+        int version_count = prefs.getInt("version_count", 0);
+        Set<String> versions = this.getMyVersions();
+
+        if (version_count > 5) {
+            int threshold = version_count - 5;
+
+            for (Iterator<String> i = versions.iterator(); i.hasNext();) {
+                String version = i.next();
+
+                String[] version_string = version.split("|");
+                logMessage("VERSION", version);
+                try {
+                    int version_number = Integer.parseInt(version_string[1]);
+                    if (version_number < threshold) {
+                        i.remove();
+                        // Also remove the version directory from the filesystem
+                        removeVersion(version_string[0]);
+                    }
+                } catch (NumberFormatException e) {
+                    logMessage("BADVER", version_string[1]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Ugly, lazy bit of code to whack old version directories...
+     *
+     * @param uuid
+     */
+    private void removeVersion(String uuid) {
+        File versionDir = this.myContext.getDir(uuid, Context.MODE_PRIVATE);
+
+        if (versionDir.exists()) {
+            String deleteCmd = "rm -r " + versionDir.getAbsolutePath();
+            Runtime runtime = Runtime.getRuntime();
+            try {
+                runtime.exec(deleteCmd);
+            } catch (IOException e) { }
         }
     }
 
@@ -364,7 +478,10 @@ public class IonicUpdate extends CordovaPlugin {
 
             prefs.edit().putString("uuid", uuid).apply();
 
-            callbackContext.success("done");
+            // Save the version we just downloaded as a version on hand
+            saveVersion(uuid);
+
+            callbackContext.success("true");
             return null;
         }
     }
