@@ -22,14 +22,12 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.Number;
-import java.lang.NumberFormatException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Set;
+import java.util.Iterator;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
@@ -206,13 +204,17 @@ public class IonicUpdate extends CordovaPlugin {
     private boolean hasVersion(String uuid) {
         Set<String> versions = this.getMyVersions();
 
+        logMessage("HASVER", "Checking " + uuid + "...");
         for (String version : versions) {
-            String[] version_string = version.split("|");
-            if (version_string[0] == uuid) {
+            String[] version_string = version.split("\\|");
+            logMessage("HASVER", version_string[0] + " == " + uuid);
+            if (version_string[0].equals(uuid)) {
+                logMessage("HASVER", "Yes");
                 return true;
             }
         }
 
+        logMessage("HASVER", "No");
         return false;
     }
 
@@ -245,25 +247,24 @@ public class IonicUpdate extends CordovaPlugin {
         int version_count = prefs.getInt("version_count", 0);
         Set<String> versions = this.getMyVersions();
 
-        if (version_count > 5) {
-            int threshold = version_count - 5;
+        if (version_count > 3) {
+            int threshold = version_count - 3;
 
             for (Iterator<String> i = versions.iterator(); i.hasNext();) {
                 String version = i.next();
-
-                String[] version_string = version.split("|");
+                String[] version_string = version.split("\\|");
                 logMessage("VERSION", version);
-                try {
-                    int version_number = Integer.parseInt(version_string[1]);
-                    if (version_number < threshold) {
-                        i.remove();
-                        // Also remove the version directory from the filesystem
-                        removeVersion(version_string[0]);
-                    }
-                } catch (NumberFormatException e) {
-                    logMessage("BADVER", version_string[1]);
+                int version_number = Integer.parseInt(version_string[1]);
+                if (version_number < threshold) {
+                    logMessage("REMOVING", version);
+                    i.remove();
+                    removeVersion(version_string[0]);
                 }
             }
+
+            Integer version_c = versions.size();
+            logMessage("VERSIONCOUNT", version_c.toString());
+            prefs.edit().putStringSet("my_versions", versions).apply();
         }
     }
 
@@ -280,7 +281,9 @@ public class IonicUpdate extends CordovaPlugin {
             Runtime runtime = Runtime.getRuntime();
             try {
                 runtime.exec(deleteCmd);
-            } catch (IOException e) { }
+            } catch (IOException e) {
+                logMessage("REMOVE", "Failed to remove " + uuid + ". Error: " + e.getMessage());
+            }
         }
     }
 
