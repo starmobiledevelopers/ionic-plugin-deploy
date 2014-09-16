@@ -2,7 +2,6 @@
 #import <Cordova/CDV.h>
 #import "UNIRest.h"
 #import "SSZipArchive.h"
-//#import "MainViewController.h"
 
 @interface IonicUpdate()
 
@@ -12,100 +11,117 @@
 
 @property int progress;
 @property NSString *callbackId;
+@property NSString *appId;
 
 @end
+
+static NSOperationQueue *delegateQueue;
 
 @implementation IonicUpdate
 
 - (void) initialize:(CDVInvokedUrlCommand *)command {
     CDVPluginResult* pluginResult = nil;
     
+    self.appId = [command.arguments objectAtIndex:0];
+    
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
 - (void) check:(CDVInvokedUrlCommand *)command {
-    CDVPluginResult* pluginResult = nil;
-    
-    NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
-    
-    NSString *our_version = [[NSUserDefaults standardUserDefaults] objectForKey:@"uuid"];
-    
-    NSString *endpoint = @"/api/v1/app/2b64e0fb/updates/check";
-    
-    NSDictionary *result = [self httpRequest:endpoint];
-    
-    if (result != nil && [result objectForKey:@"uuid"]) {
-        NSString *uuid = [result objectForKey:@"uuid"];
+    [self.commandDelegate runInBackground:^{
+        CDVPluginResult* pluginResult = nil;
         
-        // Save the "deployed" UUID so we can fetch it later
-        [prefs setObject: uuid forKey: @"upstream_uuid"];
-        [prefs synchronize];
+        NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
         
-        NSString *updatesAvailable = ![uuid isEqualToString:our_version] ? @"true" : @"false";
+        NSString *our_version = [[NSUserDefaults standardUserDefaults] objectForKey:@"uuid"];
         
-        NSLog(@"UUID: %@ OUR_UUID: %@", uuid, our_version);
-        NSLog(@"Updates Available: %@", updatesAvailable);
+        NSString *endpoint = [NSString stringWithFormat:@"/api/v1/app/%@/updates/check", self.appId];
         
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:updatesAvailable];
-    } else {
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR];
-    }
-    
-    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        NSDictionary *result = [self httpRequest:endpoint];
+        
+        if (result != nil && [result objectForKey:@"uuid"]) {
+            NSString *uuid = [result objectForKey:@"uuid"];
+            
+            // Save the "deployed" UUID so we can fetch it later
+            [prefs setObject: uuid forKey: @"upstream_uuid"];
+            [prefs synchronize];
+            
+            NSString *updatesAvailable = ![uuid isEqualToString:our_version] ? @"true" : @"false";
+            
+            NSLog(@"UUID: %@ OUR_UUID: %@", uuid, our_version);
+            NSLog(@"Updates Available: %@", updatesAvailable);
+            
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:updatesAvailable];
+        } else {
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR];
+        }
+        
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    }];
 }
 
 - (void) download:(CDVInvokedUrlCommand *)command {
-    //CDVPluginResult* pluginResult = nil;
+    //[self.commandDelegate runInBackground:^{
+        // Save this to a property so we can have the download progress delegate thing send
+        // progress update callbacks
+        self.callbackId = command.callbackId;
     
-    // Save this to a property so we can have the download progress delegate thing send
-    // progress update callbacks
-    self.callbackId = command.callbackId;
+        NSString *endpoint = [NSString stringWithFormat:@"/api/v1/app/%@/updates/download", self.appId];
     
-    NSString *endpoint = @"/api/v1/app/2b64e0fb/updates/download";
-    
-    NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
-    
-    NSString *upstream_uuid = [[NSUserDefaults standardUserDefaults] objectForKey:@"upstream_uuid"];
-    
-    NSLog(@"Upstream UUID: %@", upstream_uuid);
-    
-    if (upstream_uuid != nil && [self hasVersion:upstream_uuid]) {
-        // Set the current version to the upstream version (we already have this version)
-        [prefs setObject:upstream_uuid forKey:@"uuid"];
-        [prefs synchronize];
+        NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
         
-        [self doRedirect];
-    } else {
-        NSDictionary *result = [self httpRequest:endpoint];
+        NSString *upstream_uuid = [[NSUserDefaults standardUserDefaults] objectForKey:@"upstream_uuid"];
         
-        NSString *download_url = [result objectForKey:@"download_url"];
+        NSLog(@"Upstream UUID: %@", upstream_uuid);
         
-        [self downloadUpdate:download_url];
-    }
-    
-    /*pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"true"];
-    
-    [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];*/
+        if (upstream_uuid != nil && [self hasVersion:upstream_uuid]) {
+            // Set the current version to the upstream version (we already have this version)
+            [prefs setObject:upstream_uuid forKey:@"uuid"];
+            [prefs synchronize];
+            
+            [self doRedirect];
+        } else {
+            NSDictionary *result = [self httpRequest:endpoint];
+            
+            NSString *download_url = [result objectForKey:@"download_url"];
+            
+            //[self downloadUpdate:download_url];
+            
+            self.downloadedMutableData = [[NSMutableData alloc] init];
+            
+            NSURLRequest *urlRequest = [NSURLRequest requestWithURL:[NSURL URLWithString:download_url]
+                                                        cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
+                                                    timeoutInterval:60.0];
+            
+            //self.connectionManager = [[NSURLConnection alloc] initWithRequest:urlRequest delegate:self startImmediately:NO];
+            //[self.connectionManager setDelegateQueue:delegateQueue];
+            //[self.commandDelegate runInBackground:^{
+                //[self.connectionManager start];
+            //}];
+        }
+    //}];
 }
 
 - (void) extract:(CDVInvokedUrlCommand *)command {
-    self.callbackId = command.callbackId;
-    
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    NSString *documentsDirectory = [paths objectAtIndex:0];
-    
-    NSString *uuid = [[NSUserDefaults standardUserDefaults] objectForKey:@"uuid"];
-    
-    NSString *filePath = [NSString stringWithFormat:@"%@/%@", documentsDirectory, @"www.zip"];
-    NSString *extractPath = [NSString stringWithFormat:@"%@/%@/", documentsDirectory, uuid];
-    
-    NSLog(@"Path for zip file: %@", filePath);
-    
-    NSLog(@"Unzipping...");
-    
-    [SSZipArchive unzipFileAtPath:filePath toDestination:extractPath delegate:self];
-    
-    NSLog(@"Unzipped?");
+    [self.commandDelegate runInBackground:^{
+        self.callbackId = command.callbackId;
+        
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+        NSString *documentsDirectory = [paths objectAtIndex:0];
+        
+        NSString *uuid = [[NSUserDefaults standardUserDefaults] objectForKey:@"uuid"];
+        
+        NSString *filePath = [NSString stringWithFormat:@"%@/%@", documentsDirectory, @"www.zip"];
+        NSString *extractPath = [NSString stringWithFormat:@"%@/%@/", documentsDirectory, uuid];
+        
+        NSLog(@"Path for zip file: %@", filePath);
+        
+        NSLog(@"Unzipping...");
+        
+        [SSZipArchive unzipFileAtPath:filePath toDestination:extractPath delegate:self];
+        
+        NSLog(@"Unzipped...");
+    }];
 }
 
 - (void) redirect:(CDVInvokedUrlCommand *)command {
@@ -149,7 +165,6 @@
 }
 
 - (NSMutableArray *) getMyVersions {
-    //return [[NSUserDefaults standardUserDefaults] objectForKey:@"my_versions"];
     NSMutableArray *versions;
     NSArray *versionsLoaded = [[NSUserDefaults standardUserDefaults] arrayForKey:@"my_versions"];
     if (versionsLoaded != nil) {
@@ -200,6 +215,45 @@
     
     [prefs setObject:versions forKey:@"my_versions"];
     [prefs synchronize];
+    
+    [self cleanupVersions];
+}
+
+- (void) cleanupVersions {
+    NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+    NSMutableArray *versions = [self getMyVersions];
+    
+    int versionCount = [[NSUserDefaults standardUserDefaults] integerForKey:@"version_count"];
+    
+    if (versionCount && versionCount > 3) {
+        NSInteger threshold = versionCount - 3;
+        
+        NSInteger count = [versions count];
+        for (NSInteger index = (count - 1); index >= 0; index--) {
+            NSString *versionString = versions[index];
+            NSArray *version_parts = [versionString componentsSeparatedByString:@"|"];
+            NSInteger version_number = [version_parts[0] intValue];
+            if (version_number < threshold) {
+                [versions removeObjectAtIndex:index];
+                [self removeVersion:version_parts[1]];
+            }
+        }
+        
+        NSLog(@"Version Count: %i", [versions count]);
+        [prefs setObject:versions forKey:@"my_versions"];
+        [prefs synchronize];
+    }
+}
+
+- (void) removeVersion:(NSString *) uuid {
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    NSString *documentsDirectory = [paths objectAtIndex:0];
+    
+    NSString *pathToFolder = [NSString stringWithFormat:@"%@/%@/", documentsDirectory, uuid];
+    
+    BOOL success = [[NSFileManager defaultManager] removeItemAtPath:pathToFolder error:nil];
+    
+    NSLog(@"Removed Version %@ success? %d", uuid, success);
 }
 
 - (void) downloadUpdate:(NSString *) download_url {
@@ -226,12 +280,12 @@
     
     NSLog(@"%.0f%%", ((100.0 / self.urlResponse.expectedContentLength) * self.downloadedMutableData.length));
     
-    /*CDVPluginResult* pluginResult = nil;
+    CDVPluginResult* pluginResult = nil;
     
     pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsInt:self.progress];
-    [pluginResult setKeepCallback:[NSNumber numberWithBool:YES]];
+    [pluginResult setKeepCallbackAsBool:TRUE];
     
-    [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];*/
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
 }
 
 -(void)connectionDidFinishLoading:(NSURLConnection *)connection {
@@ -266,6 +320,13 @@
 - (void)zipArchiveProgressEvent:(NSInteger)loaded total:(NSInteger)total {
     float progress = ((100.0 / total) * loaded);
     NSLog(@"Zip Extraction: %.0f%%", progress);
+    
+    CDVPluginResult* pluginResult = nil;
+    
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsInt:progress];
+    [pluginResult setKeepCallbackAsBool:TRUE];
+    
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
     
     if (progress == 100) {
         CDVPluginResult* pluginResult = nil;

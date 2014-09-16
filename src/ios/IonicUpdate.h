@@ -30,6 +30,6 @@
 
 - (void) cleanupVersions;
 
-- (void) removeVersions;
+- (void) removeVersion:(NSString *) uuid;
 
 @end
