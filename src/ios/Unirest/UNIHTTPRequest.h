@@ -23,9 +23,9 @@
  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#import "HttpResponse/UNIHTTPStringResponse.h"
-#import "HttpResponse/UNIHTTPBinaryResponse.h"
-#import "HttpResponse/UNIHTTPJsonResponse.h"
+#import "/HttpResponse/UNIHTTPStringResponse.h"
+#import "/HttpResponse/UNIHTTPBinaryResponse.h"
+#import "/HttpResponse/UNIHTTPJsonResponse.h"
 #import "UNIUrlConnection.h"
 
 typedef NS_ENUM(NSInteger, UNIHTTPMethod) {
