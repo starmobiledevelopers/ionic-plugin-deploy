@@ -74,7 +74,7 @@
         <header-file src="src/ios/ZLib/zconf.h" />
         <header-file src="src/ios/ZLib/zlib.h" />
         <source-file src="src/ios/ZLib/zutil.c" />
-        <header-file src="src/ios/ZLib/zutil.h" / >
+        <header-file src="src/ios/ZLib/zutil.h" />
         <header-file src="src/ios/Unirest/Base64.h" />
         <source-file src="src/ios/Unirest/Base64.m" />
         <header-file src="src/ios/Unirest/UNIHTTPClientHelper.h" />
