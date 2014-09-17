@@ -61,7 +61,7 @@ static NSOperationQueue *delegateQueue;
 }
 
 - (void) download:(CDVInvokedUrlCommand *)command {
-    //[self.commandDelegate runInBackground:^{
+    [self.commandDelegate runInBackground:^{
         // Save this to a property so we can have the download progress delegate thing send
         // progress update callbacks
         self.callbackId = command.callbackId;
@@ -84,22 +84,19 @@ static NSOperationQueue *delegateQueue;
             NSDictionary *result = [self httpRequest:endpoint];
             
             NSString *download_url = [result objectForKey:@"download_url"];
+                        
+            self.downloadManager = [[DownloadManager alloc] initWithDelegate:self];
             
-            //[self downloadUpdate:download_url];
+            NSURL *url = [NSURL URLWithString:download_url];
             
-            self.downloadedMutableData = [[NSMutableData alloc] init];
+            NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+            NSString *documentsDirectory = [paths objectAtIndex:0];
+            NSString *filePath = [NSString stringWithFormat:@"%@/%@", documentsDirectory,@"www.zip"];
             
-            NSURLRequest *urlRequest = [NSURLRequest requestWithURL:[NSURL URLWithString:download_url]
-                                                        cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
-                                                    timeoutInterval:60.0];
-            
-            //self.connectionManager = [[NSURLConnection alloc] initWithRequest:urlRequest delegate:self startImmediately:NO];
-            //[self.connectionManager setDelegateQueue:delegateQueue];
-            //[self.commandDelegate runInBackground:^{
-                //[self.connectionManager start];
-            //}];
+            NSLog(@"Queueing Download...");
+            [self.downloadManager addDownloadWithFilename:filePath URL:url];
         }
-    //}];
+    }];
 }
 
 - (void) extract:(CDVInvokedUrlCommand *)command {
@@ -256,29 +253,18 @@ static NSOperationQueue *delegateQueue;
     NSLog(@"Removed Version %@ success? %d", uuid, success);
 }
 
-- (void) downloadUpdate:(NSString *) download_url {
-    self.downloadedMutableData = [[NSMutableData alloc] init];
-    
-    NSURLRequest *urlRequest = [NSURLRequest requestWithURL:[NSURL URLWithString:download_url]
-                                cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
-                                timeoutInterval:60.0];
-    
-    self.connectionManager = [[NSURLConnection alloc] initWithRequest:urlRequest delegate:self];
-    
-}
+/* Delegate Methods for the DownloadManager */
 
-/* Delegate Methods for the NSURL thing */
-
--(void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
-    NSLog(@"%lld", response.expectedContentLength);
-    self.urlResponse = response;
-}
-
--(void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data {
-    [self.downloadedMutableData appendData:data];
-    self.progress = ((100.0 / self.urlResponse.expectedContentLength) * self.downloadedMutableData.length) / 100;
+- (void)downloadManager:(DownloadManager *)downloadManager downloadDidReceiveData:(Download *)download;
+{
+    // download failed
+    // filename is retrieved from `download.filename`
+    // the bytes downloaded thus far is `download.progressContentLength`
+    // if the server reported the size of the file, it is returned by `download.expectedContentLength`
     
-    NSLog(@"%.0f%%", ((100.0 / self.urlResponse.expectedContentLength) * self.downloadedMutableData.length));
+    self.progress = ((100.0 / download.expectedContentLength) * download.progressContentLength);
+    
+    NSLog(@"%.0f%%", ((100.0 / download.expectedContentLength) * download.progressContentLength));
     
     CDVPluginResult* pluginResult = nil;
     
@@ -288,15 +274,8 @@ static NSOperationQueue *delegateQueue;
     [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
 }
 
--(void)connectionDidFinishLoading:(NSURLConnection *)connection {
-    NSLog(@"Finished");
-    
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    NSString *documentsDirectory = [paths objectAtIndex:0];
-    NSString *filePath = [NSString stringWithFormat:@"%@/%@", documentsDirectory,@"www.zip"];
-
-    [self.downloadedMutableData writeToFile:filePath atomically:YES];
-    
+- (void)didFinishLoadingAllForManager:(DownloadManager *)downloadManager
+{
     // Save the upstream_uuid (what we just downloaded) to the uuid preference
     NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
     NSString *uuid = [[NSUserDefaults standardUserDefaults] objectForKey:@"uuid"];
@@ -309,6 +288,7 @@ static NSOperationQueue *delegateQueue;
     
     [self saveVersion:upstream_uuid];
     
+    NSLog(@"Download Finished...");
     CDVPluginResult* pluginResult = nil;
     pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"true"];
     
