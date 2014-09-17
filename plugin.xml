@@ -2,7 +2,7 @@
 
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
     id="com.ionic.update"
-    version="0.0.2">
+    version="0.0.3">
     <name>IonicUpdate</name>
     <description>Ionic Update Plugin</description>
     <license>Apache 2.0</license>
@@ -26,5 +26,14 @@
     </platform>
 
     <!-- ios -->
+    <platform name="ios">
+        <config-file target="config.xml" parent="/*">
+            <feature name="IonicUpdate">
+                <param name="ios-package" value="IonicUpdate" onload="true" />
+            </feature>
+        </config-file>
 
+        <header-file src="src/ios/IonicUpdate.h" />
+        <source-file src="src/ios/IonicUpdate.m" />
+    </platform>
 </plugin>
