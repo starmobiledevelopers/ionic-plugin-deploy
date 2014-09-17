@@ -57,7 +57,7 @@
         <header-file src="src/ios/ZLib/deflate.h" />
         <source-file src="src/ios/ZLib/gzclose.c" />
         <header-file src="src/ios/ZLib/gzguts.h" />
-        <source-file src="src/ios/ZLib/gzlibc.c" />
+        <source-file src="src/ios/ZLib/gzlib.c" />
         <source-file src="src/ios/ZLib/gzread.c" />
         <source-file src="src/ios/ZLib/gzwrite.c" />
         <source-file src="src/ios/ZLib/infback.c" />
