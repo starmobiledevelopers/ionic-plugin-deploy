@@ -88,21 +88,21 @@
         <source-file src="src/ios/Unirest/UNIRest.m" />
         <header-file src="src/ios/Unirest/UNIUrlConnection.h" />
         <source-file src="src/ios/Unirest/UNIUrlConnection.m" />
-        <header-file src="src/ios/Unirest/HttpRequest/UNIBaseRequest.h" />
-        <source-file src="src/ios/Unirest/HttpRequest/UNIBaseRequest.m" />
-        <header-file src="src/ios/Unirest/HttpRequest/UNIBodyRequest.h" />
-        <source-file src="src/ios/Unirest/HttpRequest/UNIBodyRequest.m" />
-        <header-file src="src/ios/Unirest/HttpRequest/UNISimpleRequest.h" />
-        <source-file src="src/ios/Unirest/HttpRequest/UNISimpleRequest.m" />
-        <header-file src="src/ios/Unirest/HttpResponse/UNIHTTPBinaryResponse.h" />
-        <source-file src="src/ios/Unirest/HttpResponse/UNIHTTPBinaryResponse.m" />
-        <header-file src="src/ios/Unirest/HttpResponse/UNIHTTPJsonResponse.h" />
-        <source-file src="src/ios/Unirest/HttpResponse/UNIHTTPJsonResponse.m" />
-        <header-file src="src/ios/Unirest/HttpResponse/UNIHTTPResponse.h" />
-        <source-file src="src/ios/Unirest/HttpResponse/UNIHTTPResponse.m" />
-        <header-file src="src/ios/Unirest/HttpResponse/UNIHTTPStringResponse.h" />
-        <source-file src="src/ios/Unirest/HttpResponse/UNIHTTPStringResponse.m" />
-        <header-file src="src/ios/Unirest/HttpResponse/UNIJsonNode.h" />
-        <source-file src="src/ios/Unirest/HttpResponse/UNIJsonNode.m" />
+        <header-file src="src/ios/Unirest/UNIBaseRequest.h" />
+        <source-file src="src/ios/Unirest/UNIBaseRequest.m" />
+        <header-file src="src/ios/Unirest/UNIBodyRequest.h" />
+        <source-file src="src/ios/Unirest/UNIBodyRequest.m" />
+        <header-file src="src/ios/Unirest/UNISimpleRequest.h" />
+        <source-file src="src/ios/Unirest/UNISimpleRequest.m" />
+        <header-file src="src/ios/Unirest/UNIHTTPBinaryResponse.h" />
+        <source-file src="src/ios/Unirest/UNIHTTPBinaryResponse.m" />
+        <header-file src="src/ios/Unirest/UNIHTTPJsonResponse.h" />
+        <source-file src="src/ios/Unirest/UNIHTTPJsonResponse.m" />
+        <header-file src="src/ios/Unirest/UNIHTTPResponse.h" />
+        <source-file src="src/ios/Unirest/UNIHTTPResponse.m" />
+        <header-file src="src/ios/Unirest/UNIHTTPStringResponse.h" />
+        <source-file src="src/ios/Unirest/UNIHTTPStringResponse.m" />
+        <header-file src="src/ios/Unirest/UNIJsonNode.h" />
+        <source-file src="src/ios/Unirest/UNIJsonNode.m" />
     </platform>
 </plugin>
