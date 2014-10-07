@@ -33,7 +33,7 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
 public class IonicUpdate extends CordovaPlugin {
-    String server = "http://ionic-dash-local.ngrok.com";
+    String server = "https://apps.ionic.io";
     Context myContext = null;
     String app_id = null;
     boolean debug = true;
@@ -148,7 +148,7 @@ public class IonicUpdate extends CordovaPlugin {
                 callbackContext.success(updatesAvailable.toString());
             }
         } catch (JSONException e) {
-            //TODO Handle problems..
+            callbackContext.error("Invalid response from update server");
         }
 
         callbackContext.error("Unable to contact update server");
@@ -179,7 +179,7 @@ public class IonicUpdate extends CordovaPlugin {
                     downloadTask.execute(url);
                 }
             } catch (JSONException e) {
-                //TODO Handle problems..
+                callbackContext.error("Error starting download");
             }
         }
     }

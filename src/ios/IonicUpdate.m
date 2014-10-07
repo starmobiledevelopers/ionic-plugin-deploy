@@ -53,7 +53,7 @@ static NSOperationQueue *delegateQueue;
             
             pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:updatesAvailable];
         } else {
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR];
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Unable to contact update server"];
         }
         
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
@@ -146,7 +146,7 @@ static NSOperationQueue *delegateQueue;
 }
 
 - (NSDictionary *) httpRequest:(NSString *) endpoint {
-    NSString *baseUrl = @"http://ionic-dash-local.ngrok.com";
+    NSString *baseUrl = @"https://apps.ionic.io";
     NSString *url = [NSString stringWithFormat:@"%@%@", baseUrl, endpoint];
     
     NSDictionary* headers = @{@"accept": @"application/json"};
