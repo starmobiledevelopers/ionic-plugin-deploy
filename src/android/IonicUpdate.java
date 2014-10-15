@@ -33,7 +33,7 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
 public class IonicUpdate extends CordovaPlugin {
-    String server = "https://apps.ionic.io";
+    String server = "https://stage.apps.ionic.io";
     Context myContext = null;
     String app_id = null;
     boolean debug = true;

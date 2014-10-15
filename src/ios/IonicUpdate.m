@@ -146,7 +146,7 @@ static NSOperationQueue *delegateQueue;
 }
 
 - (NSDictionary *) httpRequest:(NSString *) endpoint {
-    NSString *baseUrl = @"https://apps.ionic.io";
+    NSString *baseUrl = @"https://stage.apps.ionic.io";
     NSString *url = [NSString stringWithFormat:@"%@%@", baseUrl, endpoint];
     
     NSDictionary* headers = @{@"accept": @"application/json"};
