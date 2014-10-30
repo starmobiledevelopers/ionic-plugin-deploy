@@ -17,6 +17,12 @@
 
 static NSOperationQueue *delegateQueue;
 
+typedef struct {
+    NSString *message;
+    NSDictionary *json;
+} JsonHttpResponse;
+
+}
 @implementation IonicUpdate
 
 - (void) initialize:(CDVInvokedUrlCommand *)command {
@@ -37,10 +43,10 @@ static NSOperationQueue *delegateQueue;
         
         NSString *endpoint = [NSString stringWithFormat:@"/api/v1/app/%@/updates/check", self.appId];
         
-        NSDictionary *result = [self httpRequest:endpoint];
+        JsonHttpResponse *result = [self httpRequest:endpoint];
         
-        if (result != nil && [result objectForKey:@"uuid"]) {
-            NSString *uuid = [result objectForKey:@"uuid"];
+        if (result.json != nil && [result.json objectForKey:@"uuid"]) {
+            NSString *uuid = [result.json objectForKey:@"uuid"];
             
             // Save the "deployed" UUID so we can fetch it later
             [prefs setObject: uuid forKey: @"upstream_uuid"];
@@ -53,7 +59,7 @@ static NSOperationQueue *delegateQueue;
             
             pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:updatesAvailable];
         } else {
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Unable to contact update server"];
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:result.message];
         }
         
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
@@ -145,8 +151,8 @@ static NSOperationQueue *delegateQueue;
     [self.webView loadRequest:request];
 }
 
-- (NSDictionary *) httpRequest:(NSString *) endpoint {
-    NSString *baseUrl = @"https://stage.apps.ionic.io";
+- (JsonHttpResponse) httpRequest:(NSString *) endpoint {
+    NSString *baseUrl = @"http://stage.apps.ionic.io";
     NSString *url = [NSString stringWithFormat:@"%@%@", baseUrl, endpoint];
     
     NSDictionary* headers = @{@"accept": @"application/json"};
@@ -154,11 +160,19 @@ static NSOperationQueue *delegateQueue;
     UNIHTTPJsonResponse *result = [[UNIRest get:^(UNISimpleRequest *request) {
         [request setUrl: url];
         [request setHeaders:headers];
-    }] asJson];
+    }] asJson: NSError *error];
     
-    NSDictionary *json = [NSJSONSerialization JSONObjectWithData:result.rawBody options:kNilOptions error:nil];
-    
-    return json;
+    JsonHttpResponse response = {};
+
+    if (error) {
+        response.message = (@"%@", error);
+        response.json = nil;
+    } else {
+        response.message = nil;
+        response.json = [NSJSONSerialization JSONObjectWithData:result.rawBody options:kNilOptions error:nil];
+    }
+
+    return response;
 }
 
 - (NSMutableArray *) getMyVersions {

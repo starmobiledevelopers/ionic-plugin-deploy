@@ -32,8 +32,13 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
+public class JsonHttpResponse {
+    string message;
+    JSONObject json;
+}
+
 public class IonicUpdate extends CordovaPlugin {
-    String server = "https://stage.apps.ionic.io";
+    String server = "http://stage.apps.ionic.io";
     Context myContext = null;
     String app_id = null;
     boolean debug = true;
@@ -135,23 +140,19 @@ public class IonicUpdate extends CordovaPlugin {
 
         String our_version = prefs.getString("uuid", "");
 
-        try {
-            JSONObject json = httpRequest(endpoint);
+        JsonHttpResponse response = httpRequest(endpoint);
+        
+        if (response.json != null) {
+            String deployed_version = response.json.getString("uuid");
 
-            if (json != null) {
-                String deployed_version = json.getString("uuid");
+            prefs.edit().putString("upstream_uuid", deployed_version).apply();
 
-                prefs.edit().putString("upstream_uuid", deployed_version).apply();
+            Boolean updatesAvailable = !deployed_version.equals(our_version);
 
-                Boolean updatesAvailable = !deployed_version.equals(our_version);
-
-                callbackContext.success(updatesAvailable.toString());
-            }
-        } catch (JSONException e) {
-            callbackContext.error("Invalid response from update server");
+            callbackContext.success(updatesAvailable.toString());
         }
 
-        callbackContext.error("Unable to contact update server");
+        callbackContext.error(response.message);
 
     }
 
@@ -287,8 +288,9 @@ public class IonicUpdate extends CordovaPlugin {
         }
     }
 
-    private JSONObject httpRequest(String endpoint) {
+    private JsonHttpResponse httpRequest(String endpoint) {
         HttpURLConnection urlConnection = null;
+        JsonHttpResponse response = new JsonHttpResponse();
 
         try {
             URL url = new URL(this.server + endpoint);
@@ -299,18 +301,18 @@ public class IonicUpdate extends CordovaPlugin {
 
             JSONObject json = new JSONObject(result);
 
-            return json;
+            response.json = json;
         } catch (JSONException e) {
-            //TODO Handle problems..
+            response.message = "Invalid server response";
         } catch (MalformedURLException e) {
-            //TODO Handle problems..
+            response.message = "Malformed URL";
         } catch (IOException e) {
-            //TODO Handle problems..
+            response.message = "IO Exception";
         } finally {
             urlConnection.disconnect();
         }
 
-        return null;
+        return response;
     }
 
     private SharedPreferences getPreferences() {
