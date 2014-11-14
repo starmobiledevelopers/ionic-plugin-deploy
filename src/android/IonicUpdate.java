@@ -1,7 +1,8 @@
-package com.ionic.update;
+packagt com.ionic.update;
 
-import android.content.Context;
-import android.content.SharedPreferences;
+timport android.content.Context;
+timport android.content.SharedPreferences;
+t
 import android.os.AsyncTask;
 import android.util.Log;
 
@@ -84,6 +85,15 @@ public class IonicUpdate extends CordovaPlugin {
 
             return true;
         } else if (action.equals("check")) {
+            SharedPreferences prefs = getPreferences();
+
+            String redirected = prefs.getString("redirected", "");
+
+            if (redirected == "yes") {
+              callbackContext.success("false");
+              return true;
+            }
+
             // Check for updates in a background thread
             cordova.getThreadPool().execute(new Runnable() {
                 public void run() {
@@ -114,9 +124,15 @@ public class IonicUpdate extends CordovaPlugin {
             });
             return true;
         } else if (action.equals("redirect")) {
-            // In here I want to change unzipped to be the uuid of the current version as defined
-            // in local storage
             SharedPreferences prefs = getPreferences();
+
+            // Check to see if we already redirected
+            String redirected = prefs.getString("redirected", "");
+
+            if (redirected == "yes") {
+              prefs.edit().putString("redirected", "no").apply();
+              return true;
+            }
 
             String uuid = prefs.getString("uuid", "");
             File versionDir = this.myContext.getDir(uuid, Context.MODE_PRIVATE);
@@ -125,6 +141,11 @@ public class IonicUpdate extends CordovaPlugin {
             logMessage("REDIRECT", versionDir.toURI() + "index.html");
 
             webView.loadUrlIntoView(versionDir.toURI() + "index.html");
+
+            // Set that we have redirected to a new version so that when the new version loads
+            // we know we don't have to keep checking and redirecting
+            prefs.edit().putString("redirected", "yes").apply();
+            
             return true;
         } else {
             return false;
