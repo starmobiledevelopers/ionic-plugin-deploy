@@ -1,8 +1,7 @@
-packagt com.ionic.update;
+package com.ionic.update;
 
-timport android.content.Context;
-timport android.content.SharedPreferences;
-t
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.util.Log;
 
