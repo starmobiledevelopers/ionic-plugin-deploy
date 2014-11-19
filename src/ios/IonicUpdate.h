@@ -16,7 +16,7 @@
 
 - (void) redirect:(CDVInvokedUrlCommand *)command;
 
-- (NSDictionary *) httpRequest:(NSString *) endpoint;
+- (static JsonHttpResponse) httpRequest:(NSString *) endpoint;
 
 - (bool) checkForUpdates;
 

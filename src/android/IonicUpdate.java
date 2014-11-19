@@ -32,8 +32,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
-public class JsonHttpResponse {
-    string message;
+class JsonHttpResponse {
+    String message;
     JSONObject json;
 }
 
@@ -74,6 +74,8 @@ public class IonicUpdate extends CordovaPlugin {
 
             String app_id = prefs.getString("app_id", "");
 
+            logMessage("INIT", "Initializing with App ID: " + app_id);
+
             //if (app_id == "") {
             this.app_id = args.getString(0);
             prefs.edit().putString("app_id", this.app_id).apply();
@@ -87,6 +89,9 @@ public class IonicUpdate extends CordovaPlugin {
             SharedPreferences prefs = getPreferences();
 
             String redirected = prefs.getString("redirected", "");
+
+            logMessage("CHECK", "Checking for updates");
+            logMessage("REDIR", "Redirected? " + redirected);
 
             if (redirected == "yes") {
               callbackContext.success("false");
@@ -144,7 +149,7 @@ public class IonicUpdate extends CordovaPlugin {
             // Set that we have redirected to a new version so that when the new version loads
             // we know we don't have to keep checking and redirecting
             prefs.edit().putString("redirected", "yes").apply();
-            
+
             return true;
         } else {
             return false;
@@ -161,15 +166,21 @@ public class IonicUpdate extends CordovaPlugin {
         String our_version = prefs.getString("uuid", "");
 
         JsonHttpResponse response = httpRequest(endpoint);
-        
-        if (response.json != null) {
-            String deployed_version = response.json.getString("uuid");
 
-            prefs.edit().putString("upstream_uuid", deployed_version).apply();
+        try {
+          logMessage("RESP", "Response JSON: " + response.json);
 
-            Boolean updatesAvailable = !deployed_version.equals(our_version);
+          if (response.json != null) {
+              String deployed_version = response.json.getString("uuid");
 
-            callbackContext.success(updatesAvailable.toString());
+              prefs.edit().putString("upstream_uuid", deployed_version).apply();
+
+              Boolean updatesAvailable = !deployed_version.equals(our_version);
+
+              callbackContext.success(updatesAvailable.toString());
+          }
+        } catch (JSONException e) {
+          callbackContext.error("Error checking for updates.");
         }
 
         callbackContext.error(response.message);
@@ -190,10 +201,10 @@ public class IonicUpdate extends CordovaPlugin {
             callbackContext.success("false");
         } else {
             try {
-                JSONObject json = httpRequest(endpoint);
+                JsonHttpResponse response = httpRequest(endpoint);
 
-                if (json != null) {
-                    String url = json.getString("download_url");
+                if (response.json != null) {
+                    String url = response.json.getString("download_url");
 
                     final DownloadTask downloadTask = new DownloadTask(this.myContext, callbackContext);
 
@@ -331,6 +342,8 @@ public class IonicUpdate extends CordovaPlugin {
         } finally {
             urlConnection.disconnect();
         }
+
+        logMessage("HTTPR", "Message: " + response.message);
 
         return response;
     }
