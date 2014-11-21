@@ -185,14 +185,16 @@ typedef struct JsonHttpResponse {
     
     JsonHttpResponse response;
 
-    /*if (error) {
-        response->message = (@"%@", error);
-        response->json = nil;
-    } else {*/
-        response.message = nil;
-        response.json = [NSJSONSerialization JSONObjectWithData:result.rawBody options:kNilOptions error:nil];
-    //}
+    NSError *jsonError = nil;
+
+    response.message = nil;
+    response.json = [NSJSONSerialization JSONObjectWithData:result.rawBody options:kNilOptions error:&jsonError];
     
+    // If we got an error put that in the message being returned
+    if (response.json == 'nil') {
+        response.message = (@"%@", jsonError);
+    }
+
     return response;
 }
 
