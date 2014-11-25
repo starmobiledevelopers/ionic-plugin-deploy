@@ -174,6 +174,7 @@ typedef struct JsonHttpResponse {
 
 - (struct JsonHttpResponse) httpRequest:(NSString *) endpoint {
     NSString *baseUrl = @"http://stage.apps.ionic.io";
+    //NSString *baseUrl = @"http://ionic-dash-local.ngrok.com";
     NSString *url = [NSString stringWithFormat:@"%@%@", baseUrl, endpoint];
     
     NSDictionary* headers = @{@"accept": @"application/json"};
@@ -187,14 +188,26 @@ typedef struct JsonHttpResponse {
 
     NSError *jsonError = nil;
 
-    response.message = nil;
-    response.json = [NSJSONSerialization JSONObjectWithData:result.rawBody options:kNilOptions error:&jsonError];
-    
-    // If we got an error put that in the message being returned
-    if (response.json == 'nil') {
-        response.message = (@"%@", jsonError);
+    @try {
+        response.message = nil;
+        response.json = [NSJSONSerialization JSONObjectWithData:result.rawBody options:kNilOptions error:&jsonError];
+    }
+    @catch (NSException *exception) {
+        response.message = exception.reason;
+        NSLog(@"JSON Error: %@", jsonError);
+        NSLog(@"Exception: %@", exception.reason);
+    }
+    @finally {
+        NSLog(@"In Finally");
+        NSLog(@"JSON Error: %@", jsonError);
+        
+        if (jsonError != nil) {
+            response.message = (@"%@", [jsonError localizedDescription]);
+            response.json = nil;
+        }
     }
 
+    NSLog(@"Returing?");
     return response;
 }
 
@@ -355,3 +368,6 @@ typedef struct JsonHttpResponse {
 }
 
 @end
+
+
+

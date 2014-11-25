@@ -16,7 +16,7 @@
 
 - (void) redirect:(CDVInvokedUrlCommand *)command;
 
-- (static JsonHttpResponse) httpRequest:(NSString *) endpoint;
+- (struct JsonHttpResponse) httpRequest:(NSString *) endpoint;
 
 - (bool) checkForUpdates;
 
@@ -37,3 +37,4 @@
 - (void) removeVersion:(NSString *) uuid;
 
 @end
+
