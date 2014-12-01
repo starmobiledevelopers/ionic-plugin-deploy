@@ -1,8 +1,8 @@
 #import <Cordova/CDV.h>
 #import "DownloadManager.h"
 
-//@interface IonicUpdate : CDVPlugin <NSURLConnectionDataDelegate>
-@interface IonicUpdate : CDVPlugin
+//@interface IonicDeploy : CDVPlugin <NSURLConnectionDataDelegate>
+@interface IonicDeploy : CDVPlugin
 
 @property (strong, nonatomic) DownloadManager *downloadManager;
 

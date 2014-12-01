@@ -1,9 +1,9 @@
-#import "IonicUpdate.h"
+#import "IonicDeploy.h"
 #import <Cordova/CDV.h>
 #import "UNIRest.h"
 #import "SSZipArchive.h"
 
-@interface IonicUpdate()
+@interface IonicDeploy()
 
 @property (nonatomic) NSURLConnection *connectionManager;
 @property (nonatomic) NSMutableData *downloadedMutableData;
@@ -22,7 +22,7 @@ typedef struct JsonHttpResponse {
     __unsafe_unretained NSDictionary *json;
 } JsonHttpResponse;
 
-@implementation IonicUpdate
+@implementation IonicDeploy
 
 - (void) initialize:(CDVInvokedUrlCommand *)command {
     CDVPluginResult* pluginResult = nil;

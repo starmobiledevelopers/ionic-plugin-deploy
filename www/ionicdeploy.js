@@ -1,9 +1,9 @@
-var IonicUpdate = {
+var IonicDeploy = {
     initialize: function(app_id, success, failure) {
       cordova.exec(
         success,
         failure,
-        'IonicUpdate',
+        'IonicDeploy',
         'initialize',
         [app_id]
       );
@@ -12,7 +12,7 @@ var IonicUpdate = {
         cordova.exec(
             success,
             failure,
-            'IonicUpdate',
+            'IonicDeploy',
             'check',
             []
         );
@@ -21,7 +21,7 @@ var IonicUpdate = {
     	cordova.exec(
     		success,
     		failure,
-    		'IonicUpdate',
+    		'IonicDeploy',
     		'download',
     		[]
     	);
@@ -30,7 +30,7 @@ var IonicUpdate = {
       cordova.exec(
         success,
         failure,
-        'IonicUpdate',
+        'IonicDeploy',
         'extract',
         []
       );
@@ -39,11 +39,11 @@ var IonicUpdate = {
     	cordova.exec(
     		success,
     		failure,
-    		'IonicUpdate',
+    		'IonicDeploy',
     		'redirect',
     		[]
     	);
     }
 }
 
-module.exports = IonicUpdate;
+module.exports = IonicDeploy;

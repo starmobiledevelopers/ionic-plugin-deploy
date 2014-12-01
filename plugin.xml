@@ -3,38 +3,38 @@
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
     id="com.ionic.update"
     version="0.0.5">
-    <name>IonicUpdate</name>
-    <description>Ionic Update Plugin</description>
+    <name>IonicDeploy</name>
+    <description>Ionic Deploy Plugin</description>
     <license>Apache 2.0</license>
     <keywords>Ionic,update</keywords>
-    <repo>https://github.com/driftyco/ionic-plugins-update</repo>
-    <issue>https://github.com/driftyco/ionic-plugins-update/issues</issue>
+    <repo>https://github.com/driftyco/ionic-plugins-deploy</repo>
+    <issue>https://github.com/driftyco/ionic-plugins-deploy/issues</issue>
 
-    <js-module src="www/ionicupdate.js" name="IonicUpdate">
-        <clobbers target="IonicUpdate" />
+    <js-module src="www/ionicdeploy.js" name="IonicDeploy">
+        <clobbers target="IonicDeploy" />
     </js-module>
 
     <!-- android -->
     <platform name="android">
         <config-file target="res/xml/config.xml" parent="/*">
-            <feature name="IonicUpdate">
-                <param name="android-package" value="com.ionic.update.IonicUpdate"/>
+            <feature name="IonicDeploy">
+                <param name="android-package" value="com.ionic.update.IonicDeploy"/>
             </feature>
         </config-file>
 
-        <source-file src="src/android/IonicUpdate.java" target-dir="src/com/ionic/update" />
+        <source-file src="src/android/IonicDeploy.java" target-dir="src/com/ionic/deploy" />
     </platform>
 
     <!-- ios -->
     <platform name="ios">
         <config-file target="config.xml" parent="/*">
-            <feature name="IonicUpdate">
-                <param name="ios-package" value="IonicUpdate" onload="true" />
+            <feature name="IonicDeploy">
+                <param name="ios-package" value="IonicDeploy" onload="true" />
             </feature>
         </config-file>
 
-        <header-file src="src/ios/IonicUpdate.h" />
-        <source-file src="src/ios/IonicUpdate.m" />
+        <header-file src="src/ios/IonicDeploy.h" />
+        <source-file src="src/ios/IonicDeploy.m" />
         <header-file src="src/ios/Download.h" />
         <source-file src="src/ios/Download.m" />
         <header-file src="src/ios/DownloadManager.h" />
