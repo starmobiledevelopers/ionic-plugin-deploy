@@ -181,8 +181,7 @@ typedef struct JsonHttpResponse {
 }
 
 - (struct JsonHttpResponse) httpRequest:(NSString *) endpoint {
-    NSString *baseUrl = @"http://stage.apps.ionic.io";
-    //NSString *baseUrl = @"http://ionic-dash-local.ngrok.com";
+    NSString *baseUrl = @"https://apps.ionic.io";
     NSString *url = [NSString stringWithFormat:@"%@%@", baseUrl, endpoint];
     
     NSDictionary* headers = @{@"accept": @"application/json"};

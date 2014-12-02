@@ -38,7 +38,7 @@ class JsonHttpResponse {
 }
 
 public class IonicDeploy extends CordovaPlugin {
-    String server = "http://stage.apps.ionic.io";
+    String server = "https://apps.ionic.io";
     Context myContext = null;
     String app_id = null;
     boolean debug = true;
