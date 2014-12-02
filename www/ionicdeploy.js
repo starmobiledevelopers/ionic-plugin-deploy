@@ -8,40 +8,40 @@ var IonicDeploy = {
         [app_id]
       );
     },
-    check: function(success, failure) {
+    check: function(app_id, success, failure) {
         cordova.exec(
             success,
             failure,
             'IonicDeploy',
             'check',
-            []
+            [app_id]
         );
     },
-    download: function(success, failure) {
+    download: function(app_id, success, failure) {
     	cordova.exec(
     		success,
     		failure,
     		'IonicDeploy',
     		'download',
-    		[]
+    		[app_id]
     	);
     },
-    extract: function(success,failure) {
+    extract: function(app_id, success,failure) {
       cordova.exec(
         success,
         failure,
         'IonicDeploy',
         'extract',
-        []
+        [app_id]
       );
     },
-    redirect: function(success, failure) {
+    redirect: function(app_id, success, failure) {
     	cordova.exec(
     		success,
     		failure,
     		'IonicDeploy',
     		'redirect',
-    		[]
+    		[app_id]
     	);
     }
 }

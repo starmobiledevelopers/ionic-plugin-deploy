@@ -33,6 +33,8 @@ typedef struct JsonHttpResponse {
 }
 
 - (void) check:(CDVInvokedUrlCommand *)command {
+    self.appId = [command.arguments objectAtIndex:0];
+
     [self.commandDelegate runInBackground:^{
         CDVPluginResult* pluginResult = nil;
         
@@ -74,6 +76,8 @@ typedef struct JsonHttpResponse {
 }
 
 - (void) download:(CDVInvokedUrlCommand *)command {
+    self.appId = [command.arguments objectAtIndex:0];
+
     [self.commandDelegate runInBackground:^{
         // Save this to a property so we can have the download progress delegate thing send
         // progress update callbacks
@@ -113,6 +117,8 @@ typedef struct JsonHttpResponse {
 }
 
 - (void) extract:(CDVInvokedUrlCommand *)command {
+    self.appId = [command.arguments objectAtIndex:0];
+
     [self.commandDelegate runInBackground:^{
         self.callbackId = command.callbackId;
         
@@ -135,6 +141,8 @@ typedef struct JsonHttpResponse {
 }
 
 - (void) redirect:(CDVInvokedUrlCommand *)command {
+    self.appId = [command.arguments objectAtIndex:0];
+    
     CDVPluginResult* pluginResult = nil;
     
     [self doRedirect];

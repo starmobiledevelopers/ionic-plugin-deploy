@@ -70,20 +70,9 @@ public class IonicDeploy extends CordovaPlugin {
     public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
         if (action.equals("initialize")) {
             // Save the app id if it's not already set
-            SharedPreferences prefs = getPreferences();
-
-            String app_id = prefs.getString("app_id", "");
-
-            logMessage("INIT", "Initializing with App ID: " + app_id);
-
-            //if (app_id == "") {
             this.app_id = args.getString(0);
-            prefs.edit().putString("app_id", this.app_id).apply();
-            // Used for keeping track of the order versions were downloaded
-            int version_count = prefs.getInt("version_count", 0);
-            prefs.edit().putInt("version_count", version_count).apply();
-            //}
 
+            initApp(this.app_id);
             return true;
         } else if (action.equals("check")) {
             SharedPreferences prefs = getPreferences();
@@ -92,6 +81,10 @@ public class IonicDeploy extends CordovaPlugin {
 
             logMessage("CHECK", "Checking for updates");
             logMessage("REDIR", "Redirected? " + redirected);
+
+            // We do this on every call to make sure it is here, because we dont want to have the initialize function
+            this.app_id = args.getString(0);
+            initApp(this.app_id);
 
             if (redirected == "yes") {
               callbackContext.success("false");
@@ -107,6 +100,11 @@ public class IonicDeploy extends CordovaPlugin {
             return true;
         } else if (action.equals("download")) {
             // Download in a background thread
+
+            // We do this on every call to make sure it is here, because we dont want to have the initialize function
+            this.app_id = args.getString(0);
+            initApp(this.app_id);
+            
             cordova.getThreadPool().execute(new Runnable() {
                 public void run() {
                     downloadUpdate(callbackContext);
@@ -116,6 +114,11 @@ public class IonicDeploy extends CordovaPlugin {
             return true;
         } else if (action.equals("extract")) {
             // Extract in a background thread
+            
+            // We do this on every call to make sure it is here, because we dont want to have the initialize function
+            this.app_id = args.getString(0);
+            initApp(this.app_id);
+
             cordova.getThreadPool().execute(new Runnable() {
                 public void run() {
                     SharedPreferences prefs = getPreferences();
@@ -132,6 +135,10 @@ public class IonicDeploy extends CordovaPlugin {
 
             // Check to see if we already redirected
             String redirected = prefs.getString("redirected", "");
+
+            // We do this on every call to make sure it is here, because we dont want to have the initialize function
+            this.app_id = args.getString(0);
+            initApp(this.app_id);
 
             if (redirected == "yes") {
               prefs.edit().putString("redirected", "no").apply();
@@ -154,6 +161,17 @@ public class IonicDeploy extends CordovaPlugin {
         } else {
             return false;
         }
+    }
+
+    private void initApp(String app_id) {
+        SharedPreferences prefs = getPreferences();
+
+        logMessage("INIT", "Initializing with App ID: " + app_id);
+        
+        prefs.edit().putString("app_id", this.app_id).apply();
+        // Used for keeping track of the order versions were downloaded
+        int version_count = prefs.getInt("version_count", 0);
+        prefs.edit().putInt("version_count", version_count).apply();
     }
 
     private void checkForUpdates(CallbackContext callbackContext) {
