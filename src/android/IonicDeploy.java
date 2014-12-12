@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.util.Log;
+import android.content.res.AssetManager;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
@@ -22,6 +23,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -394,6 +396,26 @@ public class IonicDeploy extends CordovaPlugin {
             Log.i(tag, message);
         }
     }
+
+    private void copyFile(String src, File dst) throws IOException {
+        AssetManager assetManager = this.myContext.getAssets();
+
+        InputStream in = assetManager.open(src);
+        OutputStream out = new FileOutputStream(dst);
+
+        // Make sure that the full path for the target file exists
+        dst.getParentFile().mkdirs();
+
+        // Transfer bytes from in to out
+        byte[] buf = new byte[1024];
+        int len;
+        while ((len = in.read(buf)) > 0) {
+            out.write(buf, 0, len);
+        }
+        in.close();
+        out.close();
+    }
+
     /**
      * Extract the downloaded archive
      *
@@ -452,6 +474,10 @@ public class IonicDeploy extends CordovaPlugin {
                 callbackContext.sendPluginResult(progressResult);
             }
             zipInputStream.close();
+
+            // We also need to copy cordova.js from the binary www directory so the plugins work
+            copyFile("www/cordova.js", new File(versionDir.getAbsolutePath().toString() + "/cordova.js"));
+
         } catch(Exception e) {
             //TODO Handle problems..
             logMessage("UNZIP_STEP", "Exception: " + e.getMessage());
