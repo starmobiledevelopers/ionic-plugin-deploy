@@ -18,12 +18,6 @@
 
 - (struct JsonHttpResponse) httpRequest:(NSString *) endpoint;
 
-- (bool) checkForUpdates;
-
-- (void) downloadUpdate:(NSString *) download_url;
-
-- (void) unzip;
-
 - (void) doRedirect;
 
 - (NSMutableArray *) getMyVersions;
