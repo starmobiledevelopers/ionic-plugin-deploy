@@ -136,6 +136,35 @@ typedef struct JsonHttpResponse {
         
         [SSZipArchive unzipFileAtPath:filePath toDestination:extractPath delegate:self];
         
+        NSURL *currentAppDirectoryURL = [self.webView.request.mainDocumentURL URLByDeletingLastPathComponent];
+        NSString *currentAppDirectoryPath = [currentAppDirectoryURL path];
+        NSString *cordovaSrcPath = [NSString stringWithFormat:@"%@/%@", currentAppDirectoryPath, @"cordova.js"];
+        NSString *cordovaPluginsSrcPath = [NSString stringWithFormat:@"%@/%@", currentAppDirectoryPath, @"cordova_plugins.js"];
+        NSString *pluginsSrcPath = [NSString stringWithFormat:@"%@/%@", currentAppDirectoryPath, @"plugins/"];
+        
+        NSString *cordovaDestPath = [NSString stringWithFormat:@"%@/%@", extractPath, @"cordova.js"];
+        NSString *cordovaPluginsDestPath = [NSString stringWithFormat:@"%@/%@", extractPath, @"cordova_plugins.js"];
+        NSString *pluginsDestPath = [NSString stringWithFormat:@"%@/%@", extractPath, @"plugins/"];
+        
+        NSError* err = nil;
+        [[NSFileManager defaultManager] copyItemAtPath:cordovaSrcPath toPath:cordovaDestPath error:&err];
+        
+        if ( err != nil ){
+            NSLog(@"There was an error: %@", err);
+        }
+        
+        [[NSFileManager defaultManager] copyItemAtPath:cordovaPluginsSrcPath toPath:cordovaPluginsDestPath error:&err];
+        
+        if ( err != nil ){
+            NSLog(@"There was an error: %@", err);
+        }
+        
+        [[NSFileManager defaultManager] copyItemAtPath:pluginsSrcPath toPath:pluginsDestPath error:&err];
+        
+        if ( err != nil ){
+            NSLog(@"There was an error: %@", err);
+        }
+        
         NSLog(@"Unzipped...");
     }];
 }
