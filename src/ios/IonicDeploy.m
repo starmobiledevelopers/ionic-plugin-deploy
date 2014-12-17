@@ -12,6 +12,7 @@
 @property int progress;
 @property NSString *callbackId;
 @property NSString *appId;
+@property NSString *currentUUID;
 
 @end
 
@@ -39,39 +40,34 @@ typedef struct JsonHttpResponse {
         CDVPluginResult* pluginResult = nil;
         
         NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
-        NSInteger redirected = [[NSUserDefaults standardUserDefaults] integerForKey:@"redirected"];
         
-        if (redirected == 1) {
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"false"];
-            [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        NSString *our_version = [[NSUserDefaults standardUserDefaults] objectForKey:@"uuid"];
+        
+        NSString *endpoint = [NSString stringWithFormat:@"/api/v1/app/%@/updates/check", self.appId];
+        
+        JsonHttpResponse result = [self httpRequest:endpoint];
+        
+        NSLog(@"Response: %@", result.message);
+        
+        if (result.json != nil && [result.json objectForKey:@"uuid"]) {
+            NSString *uuid = [result.json objectForKey:@"uuid"];
+            
+            // Save the "deployed" UUID so we can fetch it later
+            [prefs setObject: uuid forKey: @"upstream_uuid"];
+            [prefs synchronize];
+            
+            NSString *updatesAvailable = ![uuid isEqualToString:our_version] ? @"true" : @"false";
+            
+            NSLog(@"UUID: %@ OUR_UUID: %@", uuid, our_version);
+            NSLog(@"Updates Available: %@", updatesAvailable);
+            
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:updatesAvailable];
         } else {
-            NSString *our_version = [[NSUserDefaults standardUserDefaults] objectForKey:@"uuid"];
-                
-            NSString *endpoint = [NSString stringWithFormat:@"/api/v1/app/%@/updates/check", self.appId];
-                
-            JsonHttpResponse result = [self httpRequest:endpoint];
-            
-            NSLog(@"Response: %@", result.message);
-            
-            if (result.json != nil && [result.json objectForKey:@"uuid"]) {
-                NSString *uuid = [result.json objectForKey:@"uuid"];
-                    
-                // Save the "deployed" UUID so we can fetch it later
-                [prefs setObject: uuid forKey: @"upstream_uuid"];
-                [prefs synchronize];
-                    
-                NSString *updatesAvailable = ![uuid isEqualToString:our_version] ? @"true" : @"false";
-                    
-                NSLog(@"UUID: %@ OUR_UUID: %@", uuid, our_version);
-                NSLog(@"Updates Available: %@", updatesAvailable);
-                    
-                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:updatesAvailable];
-            } else {
-                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:result.message];
-            }
-                
-            [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:result.message];
         }
+        
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        
     }];
 }
 
@@ -181,31 +177,25 @@ typedef struct JsonHttpResponse {
 
 
 - (void) doRedirect {
-    NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
-    NSInteger redirected = [[NSUserDefaults standardUserDefaults] integerForKey:@"redirected"];
-
-    if (redirected == 1) {
-      [prefs setInteger:0 forKey:@"redirected"];
-      [prefs synchronize];
-    } else {
-      NSString *uuid = [[NSUserDefaults standardUserDefaults] objectForKey:@"uuid"];
-      int versionCount = [[NSUserDefaults standardUserDefaults] integerForKey:@"version_count"];
-
-      NSString *versionString = [NSString stringWithFormat:@"%i|%@", versionCount, uuid];
-      NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-      NSString *documentsDirectory = [paths objectAtIndex:0];
-            
-            
-      NSString *indexPath = [NSString stringWithFormat:@"%@/%@/index.html", documentsDirectory, uuid];
-           
-      NSURL *urlOverwrite = [NSURL fileURLWithPath:indexPath];
-      NSURLRequest *request = [NSURLRequest requestWithURL:urlOverwrite];
-            
-      [prefs setInteger:1 forKey:@"redirected"];
-      [prefs synchronize];
-
-      NSLog(@"Redirecting to: %@", indexPath);
-      [self.webView loadRequest:request];
+    NSString *uuid = [[NSUserDefaults standardUserDefaults] objectForKey:@"uuid"];
+    
+    if ( ![self.currentUUID isEqualToString: uuid] ) {
+        int versionCount = [[NSUserDefaults standardUserDefaults] integerForKey:@"version_count"];
+        
+        NSString *versionString = [NSString stringWithFormat:@"%i|%@", versionCount, uuid];
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+        NSString *documentsDirectory = [paths objectAtIndex:0];
+        
+        
+        NSString *indexPath = [NSString stringWithFormat:@"%@/%@/index.html", documentsDirectory, uuid];
+        
+        NSURL *urlOverwrite = [NSURL fileURLWithPath:indexPath];
+        NSURLRequest *request = [NSURLRequest requestWithURL:urlOverwrite];
+        
+        self.currentUUID = uuid;
+        
+        NSLog(@"Redirecting to: %@", indexPath);
+        [self.webView loadRequest:request];
     }
 }
 
@@ -404,6 +394,3 @@ typedef struct JsonHttpResponse {
 }
 
 @end
-
-
-
