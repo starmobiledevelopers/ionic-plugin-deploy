@@ -195,7 +195,7 @@ typedef struct JsonHttpResponse {
         self.currentUUID = uuid;
         
         NSLog(@"Redirecting to: %@", indexPath);
-        [self.webView loadRequest:request];
+        [self.commandDelegate evalJs:[NSString stringWithFormat:@"window.location='file://%@'", indexPath]];
     }
 }
 
