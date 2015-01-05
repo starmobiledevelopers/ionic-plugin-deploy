@@ -33,7 +33,7 @@ typedef struct JsonHttpResponse {
 - (void) check:(CDVInvokedUrlCommand *)command {
     self.appId = [command.arguments objectAtIndex:0];
 
-    [self.commandDelegate runInBackground:^{
+    dispatch_async(self.serialQueue, ^{
         CDVPluginResult* pluginResult = nil;
         
         NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
@@ -65,13 +65,13 @@ typedef struct JsonHttpResponse {
         
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         
-    }];
+    });
 }
 
 - (void) download:(CDVInvokedUrlCommand *)command {
     self.appId = [command.arguments objectAtIndex:0];
 
-    [self.commandDelegate runInBackground:^{
+    dispatch_async(self.serialQueue, ^{
         // Save this to a property so we can have the download progress delegate thing send
         // progress update callbacks
         self.callbackId = command.callbackId;
@@ -106,13 +106,13 @@ typedef struct JsonHttpResponse {
             NSLog(@"Queueing Download...");
             [self.downloadManager addDownloadWithFilename:filePath URL:url];
         }
-    }];
+    });
 }
 
 - (void) extract:(CDVInvokedUrlCommand *)command {
     self.appId = [command.arguments objectAtIndex:0];
 
-    [self.commandDelegate runInBackground:^{
+    dispatch_async(self.serialQueue, ^{
         self.callbackId = command.callbackId;
         
         NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
@@ -159,7 +159,7 @@ typedef struct JsonHttpResponse {
         }
         
         NSLog(@"Unzipped...");
-    }];
+    });
 }
 
 - (void) redirect:(CDVInvokedUrlCommand *)command {
@@ -176,6 +176,7 @@ typedef struct JsonHttpResponse {
 - (void) doRedirect {
     NSString *uuid = [[NSUserDefaults standardUserDefaults] objectForKey:@"uuid"];
     
+    dispatch_async(self.serialQueue, ^{
     if ( ![self.currentUUID isEqualToString: uuid] ) {
         int versionCount = [[NSUserDefaults standardUserDefaults] integerForKey:@"version_count"];
         
@@ -194,6 +195,7 @@ typedef struct JsonHttpResponse {
         NSLog(@"Redirecting to: %@", indexPath);
         [self.commandDelegate evalJs:[NSString stringWithFormat:@"window.location='file://%@'", indexPath]];
     }
+    });
 }
 
 - (struct JsonHttpResponse) httpRequest:(NSString *) endpoint {
