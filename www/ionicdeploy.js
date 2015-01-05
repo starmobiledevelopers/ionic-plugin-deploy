@@ -1,13 +1,4 @@
 var IonicDeploy = {
-    initialize: function(app_id, success, failure) {
-      cordova.exec(
-        success,
-        failure,
-        'IonicDeploy',
-        'initialize',
-        [app_id]
-      );
-    },
     check: function(app_id, success, failure) {
         cordova.exec(
             success,

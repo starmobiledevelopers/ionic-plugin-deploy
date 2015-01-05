@@ -13,6 +13,7 @@
 @property NSString *callbackId;
 @property NSString *appId;
 @property NSString *currentUUID;
+@property dispatch_queue_t serialQueue;
 
 @end
 
@@ -25,12 +26,8 @@ typedef struct JsonHttpResponse {
 
 @implementation IonicDeploy
 
-- (void) initialize:(CDVInvokedUrlCommand *)command {
-    CDVPluginResult* pluginResult = nil;
-    
-    self.appId = [command.arguments objectAtIndex:0];
-    
-    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+- (void) pluginInitialize {
+    self.serialQueue = dispatch_queue_create("Deploy Plugin Queue", NULL);
 }
 
 - (void) check:(CDVInvokedUrlCommand *)command {
