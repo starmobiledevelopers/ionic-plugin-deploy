@@ -177,7 +177,7 @@ typedef struct JsonHttpResponse {
     NSString *uuid = [[NSUserDefaults standardUserDefaults] objectForKey:@"uuid"];
     
     dispatch_async(self.serialQueue, ^{
-    if ( ![self.currentUUID isEqualToString: uuid] ) {
+    if ( uuid != nil && ![self.currentUUID isEqualToString: uuid] ) {
         int versionCount = [[NSUserDefaults standardUserDefaults] integerForKey:@"version_count"];
         
         NSString *versionString = [NSString stringWithFormat:@"%i|%@", versionCount, uuid];
