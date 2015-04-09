@@ -50,8 +50,20 @@ typedef struct JsonHttpResponse {
         JsonHttpResponse result = [self httpRequest:endpoint];
         
         NSLog(@"Response: %@", result.message);
-        
-        if (result.json != nil && [result.json objectForKey:@"uuid"]) {
+
+        if (result.json != nil && [result.json objectForKey:@"is_first"]) {
+            NSString *uuid = [result.json objectForKey:@"uuid"];
+            
+            // Save the "deployed" UUID so we can fetch it later
+            [prefs setObject: uuid forKey: @"upstream_uuid"];
+            [prefs synchronize];
+
+            our_version = uuid;
+
+            NSLog(@"UUID: %@ OUR_UUID: %@", uuid, our_version);
+            NSLog(@"Updates Available: %@", false);
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:"false"];
+        } else if (result.json != nil && [result.json objectForKey:@"uuid"]) {
             NSString *uuid = [result.json objectForKey:@"uuid"];
             
             // Save the "deployed" UUID so we can fetch it later
