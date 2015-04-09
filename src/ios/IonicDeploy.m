@@ -60,8 +60,13 @@ typedef struct JsonHttpResponse {
 
             our_version = uuid;
 
+            NSNumber *isFirst = [result.json objectForKey:@"is_first"];
+            
+            NSString *updatesAvailable = !isFirst.boolValue && ![uuid isEqualToString:our_version] ? @"true" : @"false";
+            
             NSLog(@"UUID: %@ OUR_UUID: %@", uuid, our_version);
-            NSLog(@"Updates Available: %@", false);
+            NSLog(@"Updates Available: %@", updatesAvailable);
+            NSLog(@"Is first?: %@", isFirst);
             pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:"false"];
         } else if (result.json != nil && [result.json objectForKey:@"uuid"]) {
             NSString *uuid = [result.json objectForKey:@"uuid"];
