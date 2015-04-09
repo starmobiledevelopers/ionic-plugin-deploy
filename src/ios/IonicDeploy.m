@@ -33,6 +33,11 @@ typedef struct JsonHttpResponse {
 - (void) check:(CDVInvokedUrlCommand *)command {
     self.appId = [command.arguments objectAtIndex:0];
 
+    if([self.appId isEqual: @"YOUR_APP_ID"]) {
+        [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Please set your app id in app.js for YOUR_APP_ID before using $ionicDeploy"] kjcallbackId:command.callbackId];
+        return;
+    }
+
     dispatch_async(self.serialQueue, ^{
         CDVPluginResult* pluginResult = nil;
         
