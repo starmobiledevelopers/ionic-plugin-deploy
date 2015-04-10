@@ -67,7 +67,7 @@ typedef struct JsonHttpResponse {
             NSLog(@"UUID: %@ OUR_UUID: %@", uuid, our_version);
             NSLog(@"Updates Available: %@", updatesAvailable);
             NSLog(@"Is first?: %@", isFirst);
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:"false"];
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"false"];
         } else if (result.json != nil && [result.json objectForKey:@"uuid"]) {
             NSString *uuid = [result.json objectForKey:@"uuid"];
             
