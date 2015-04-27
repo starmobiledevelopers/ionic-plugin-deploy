@@ -70,22 +70,14 @@ public class IonicDeploy extends CordovaPlugin {
      * @return                  True if the action was valid, false if not.
      */
     public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
-        if (action.equals("initialize")) {
-            // Save the app id if it's not already set
-            this.app_id = args.getString(0);
 
-            initApp(this.app_id);
+        initApp(args.getString(0));
+        final SharedPreferences prefs = getPreferences();
+
+        if (action.equals("initialize")) {
             return true;
         } else if (action.equals("check")) {
-            SharedPreferences prefs = getPreferences();
-
             logMessage("CHECK", "Checking for updates");
-
-            // We do this on every call to make sure it is here, because we dont want to have the initialize function
-            this.app_id = args.getString(0);
-            initApp(this.app_id);
-
-            // Check for updates in a background thread
             cordova.getThreadPool().execute(new Runnable() {
                 public void run() {
                     checkForUpdates(callbackContext);
@@ -93,57 +85,35 @@ public class IonicDeploy extends CordovaPlugin {
             });
             return true;
         } else if (action.equals("download")) {
-            // Download in a background thread
-
-            // We do this on every call to make sure it is here, because we dont want to have the initialize function
-            this.app_id = args.getString(0);
-            initApp(this.app_id);
-            
+            logMessage("DOWNLOAD", "Downloading updates");
             cordova.getThreadPool().execute(new Runnable() {
                 public void run() {
                     downloadUpdate(callbackContext);
                 }
             });
-
             return true;
         } else if (action.equals("extract")) {
-            // Extract in a background thread
-            
-            // We do this on every call to make sure it is here, because we dont want to have the initialize function
-            this.app_id = args.getString(0);
-            initApp(this.app_id);
-
+            logMessage("EXTRACT", "Extracting update");
             cordova.getThreadPool().execute(new Runnable() {
                 public void run() {
-                    SharedPreferences prefs = getPreferences();
-
-                    // Set the saved uuid to the most recently acquired upstream_uuid
                     String uuid = prefs.getString("uuid", "");
-
                     unzip("www.zip", uuid, callbackContext);
                 }
             });
             return true;
         } else if (action.equals("redirect")) {
-            SharedPreferences prefs = getPreferences();
-
-            // We do this on every call to make sure it is here, because we dont want to have the initialize function
-            this.app_id = args.getString(0);
-            initApp(this.app_id);
+            logMessage("REDIRECT", "Preparing redirect");
 
             String uuid = prefs.getString("uuid", "");
             final File versionDir = this.myContext.getDir(uuid, Context.MODE_PRIVATE);
 
-            logMessage("REDIRECT_1", versionDir.getAbsolutePath().toString() + "index.html");
-            logMessage("REDIRECT", versionDir.toURI() + "index.html");
-
             cordova.getActivity().runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    logMessage("REDIRECT", versionDir.toURI() + "index.html");
                     webView.loadUrl(versionDir.toURI() + "index.html");
                 }
             });
-
             return true;
         } else {
             return false;
@@ -151,10 +121,11 @@ public class IonicDeploy extends CordovaPlugin {
     }
 
     private void initApp(String app_id) {
+        logMessage("INIT", "Initializing with App ID: " + app_id);
+
+        this.app_id = app_id;
         SharedPreferences prefs = getPreferences();
 
-        logMessage("INIT", "Initializing with App ID: " + app_id);
-        
         prefs.edit().putString("app_id", this.app_id).apply();
         // Used for keeping track of the order versions were downloaded
         int version_count = prefs.getInt("version_count", 0);
