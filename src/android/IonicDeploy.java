@@ -141,7 +141,6 @@ public class IonicDeploy extends CordovaPlugin {
                 @Override
                 public void run() {
                     webView.loadUrl(versionDir.toURI() + "index.html");
-                    webView.reload();
                 }
             });
 
