@@ -1,4 +1,4 @@
-package com.ionic.update;
+package com.ionic.deploy;
 
 import android.content.Context;
 import android.content.SharedPreferences;
