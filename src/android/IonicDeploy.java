@@ -409,11 +409,11 @@ public class IonicDeploy extends CordovaPlugin {
 
             // Figure out how many entries are in the zip so we can calculate extraction progress
             ZipFile zipFile = new ZipFile(this.myContext.getFileStreamPath(zip).getAbsolutePath().toString());
-            int entries = zipFile.size();
+            float entries = new Float(zipFile.size());
 
-            logMessage("ENTRIES", Integer.toString(entries));
+            logMessage("ENTRIES", "Total: " + (int) entries);
 
-            int extracted = 0;
+            float extracted = 0.0f;
 
             while ((zipEntry = zipInputStream.getNextEntry()) != null) {
                 File newFile = new File(versionDir + "/" + zipEntry.getName());
@@ -433,9 +433,11 @@ public class IonicDeploy extends CordovaPlugin {
                 outputBuffer.close();
 
                 extracted += 1;
-                logMessage("EXTRACT", Integer.toString(extracted));
+                
+                float progress = (extracted / entries) * new Float("100.0f");
+                logMessage("EXTRACT", "Progress: " + (int) progress + "%");
 
-                PluginResult progressResult = new PluginResult(PluginResult.Status.OK, (int) (extracted * 100 / entries));
+                PluginResult progressResult = new PluginResult(PluginResult.Status.OK, (int) progress);
                 progressResult.setKeepCallback(true);
                 callbackContext.sendPluginResult(progressResult);
             }
@@ -484,14 +486,16 @@ public class IonicDeploy extends CordovaPlugin {
 
                 // this will be useful to display download percentage
                 // might be -1: server did not report the length
-                int fileLength = connection.getContentLength();
+                float fileLength = new Float(connection.getContentLength());
+
+                logMessage("DOWNLOAD", "File size: " + fileLength);
 
                 // download the file
                 input = connection.getInputStream();
                 output = this.myContext.openFileOutput("www.zip", Context.MODE_PRIVATE);
 
                 byte data[] = new byte[4096];
-                long total = 0;
+                float total = 0;
                 int count;
                 while ((count = input.read(data)) != -1) {
                     total += count;
@@ -500,8 +504,9 @@ public class IonicDeploy extends CordovaPlugin {
 
                     // Send the current download progress to a callback
                     if (fileLength > 0) {
-                        int progress = (int) (total * 100 / fileLength);
-                        PluginResult progressResult = new PluginResult(PluginResult.Status.OK, (int) (total * 100 / fileLength));
+                        float progress = (total / fileLength) * new Float("100.0f");
+                        logMessage("DOWNLOAD", "Progress: " + (int) progress + "%");
+                        PluginResult progressResult = new PluginResult(PluginResult.Status.OK, (int) progress);
                         progressResult.setKeepCallback(true);
                         callbackContext.sendPluginResult(progressResult);
                     }
