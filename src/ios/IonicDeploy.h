@@ -8,6 +8,8 @@
 
 - (void) initialize:(CDVInvokedUrlCommand *)command;
 
+- (void) setPage:(NSString *)url;
+
 - (void) check:(CDVInvokedUrlCommand *)command;
 
 - (void) download:(CDVInvokedUrlCommand *)command;
