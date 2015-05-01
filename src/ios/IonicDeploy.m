@@ -35,13 +35,13 @@ typedef struct JsonHttpResponse {
 
 - (void) setPage:(NSString *)url {
     NSString *js = [NSString stringWithFormat:@"window.localStorage.setItem('_ionic_web_start', '%@');", url];
-    NSLog([NSString stringWithFormat:@"Set localStorage page: %@", js]);
+    NSLog(@"Set localStorage page: %@", js);
     [self.commandDelegate evalJs:js];
 }
 
 - (void) pageDidLoad:(UIWebView *)webView {
     NSString *js = [NSString stringWithFormat:@"window.localStorage.setItem('_ionic_cordova_js_resource', '%@');", self.cordova_js_resource];
-    [self.webView stringByEvaluatingJavaScriptFromString:js];
+    [self.commandDelegate evalJs:js];
     [self setPage:self.webView.request.mainDocumentURL.absoluteString];
 }
 
