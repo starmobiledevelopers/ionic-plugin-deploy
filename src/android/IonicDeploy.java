@@ -1,4 +1,4 @@
-package com.ionic.update;
+package com.ionic.deploy;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -70,30 +70,15 @@ public class IonicDeploy extends CordovaPlugin {
      * @return                  True if the action was valid, false if not.
      */
     public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
-        if (action.equals("initialize")) {
-            // Save the app id if it's not already set
-            this.app_id = args.getString(0);
 
-            initApp(this.app_id);
+        initApp(args.getString(0));
+        final SharedPreferences prefs = getPreferences();
+
+        if (action.equals("initialize")) {
+            prefs.edit().putString("loaded_uuid", "").apply();
             return true;
         } else if (action.equals("check")) {
-            SharedPreferences prefs = getPreferences();
-
-            String redirected = prefs.getString("redirected", "");
-
             logMessage("CHECK", "Checking for updates");
-            logMessage("REDIR", "Redirected? " + redirected);
-
-            // We do this on every call to make sure it is here, because we dont want to have the initialize function
-            this.app_id = args.getString(0);
-            initApp(this.app_id);
-
-            if (redirected == "yes") {
-              callbackContext.success("false");
-              return true;
-            }
-
-            // Check for updates in a background thread
             cordova.getThreadPool().execute(new Runnable() {
                 public void run() {
                     checkForUpdates(callbackContext);
@@ -101,64 +86,40 @@ public class IonicDeploy extends CordovaPlugin {
             });
             return true;
         } else if (action.equals("download")) {
-            // Download in a background thread
-
-            // We do this on every call to make sure it is here, because we dont want to have the initialize function
-            this.app_id = args.getString(0);
-            initApp(this.app_id);
-            
+            logMessage("DOWNLOAD", "Downloading updates");
             cordova.getThreadPool().execute(new Runnable() {
                 public void run() {
                     downloadUpdate(callbackContext);
                 }
             });
-
             return true;
         } else if (action.equals("extract")) {
-            // Extract in a background thread
-            
-            // We do this on every call to make sure it is here, because we dont want to have the initialize function
-            this.app_id = args.getString(0);
-            initApp(this.app_id);
-
+            logMessage("EXTRACT", "Extracting update");
             cordova.getThreadPool().execute(new Runnable() {
                 public void run() {
-                    SharedPreferences prefs = getPreferences();
-
-                    // Set the saved uuid to the most recently acquired upstream_uuid
                     String uuid = prefs.getString("uuid", "");
-
                     unzip("www.zip", uuid, callbackContext);
                 }
             });
             return true;
         } else if (action.equals("redirect")) {
-            SharedPreferences prefs = getPreferences();
+            logMessage("REDIRECT", "Preparing redirect");
 
-            // Check to see if we already redirected
-            String redirected = prefs.getString("redirected", "");
+            String loaded_uuid = prefs.getString("loaded_uuid", "");
+            final String uuid = prefs.getString("uuid", "");
+            if (!loaded_uuid.equals(uuid)){
+                final File versionDir = this.myContext.getDir(uuid, Context.MODE_PRIVATE);
+                logMessage("REDIRECT", uuid);
 
-            // We do this on every call to make sure it is here, because we dont want to have the initialize function
-            this.app_id = args.getString(0);
-            initApp(this.app_id);
-
-            if (redirected == "yes") {
-              prefs.edit().putString("redirected", "no").apply();
-              return true;
+                cordova.getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        logMessage("REDIRECT", versionDir.toURI() + "index.html");
+                        prefs.edit().putString("loaded_uuid", uuid).apply();
+                        webView.loadUrl(versionDir.toURI() + "index.html");
+                    }
+                });
             }
-
-            String uuid = prefs.getString("uuid", "");
-            File versionDir = this.myContext.getDir(uuid, Context.MODE_PRIVATE);
-
-            logMessage("REDIRECT_1", versionDir.getAbsolutePath().toString() + "index.html");
-            logMessage("REDIRECT", versionDir.toURI() + "index.html");
-
-            webView.loadUrlIntoView(versionDir.toURI() + "index.html");
-
-            // Set that we have redirected to a new version so that when the new version loads
-            // we know we don't have to keep checking and redirecting
-            prefs.edit().putString("redirected", "yes").apply();
-
             return true;
         } else {
             return false;
@@ -166,10 +127,11 @@ public class IonicDeploy extends CordovaPlugin {
     }
 
     private void initApp(String app_id) {
+        logMessage("INIT", "Initializing with App ID: " + app_id);
+
+        this.app_id = app_id;
         SharedPreferences prefs = getPreferences();
 
-        logMessage("INIT", "Initializing with App ID: " + app_id);
-        
         prefs.edit().putString("app_id", this.app_id).apply();
         // Used for keeping track of the order versions were downloaded
         int version_count = prefs.getInt("version_count", 0);
@@ -423,6 +385,16 @@ public class IonicDeploy extends CordovaPlugin {
      * @param location
      */
     private void unzip(String zip, String location, CallbackContext callbackContext) {
+        SharedPreferences prefs = getPreferences();
+        String upstream_uuid = prefs.getString("upstream_uuid", "");
+
+        logMessage("UNZIP", upstream_uuid);
+
+        if (upstream_uuid != "" && this.hasVersion(upstream_uuid)) {
+            callbackContext.success("done"); // we have already extracted this version
+            return;
+        }
+
         try  {
             FileInputStream inputStream = this.myContext.openFileInput(zip);
             ZipInputStream zipInputStream = new ZipInputStream(inputStream);
@@ -443,11 +415,11 @@ public class IonicDeploy extends CordovaPlugin {
 
             // Figure out how many entries are in the zip so we can calculate extraction progress
             ZipFile zipFile = new ZipFile(this.myContext.getFileStreamPath(zip).getAbsolutePath().toString());
-            int entries = zipFile.size();
+            float entries = new Float(zipFile.size());
 
-            logMessage("ENTRIES", Integer.toString(entries));
+            logMessage("ENTRIES", "Total: " + (int) entries);
 
-            int extracted = 0;
+            float extracted = 0.0f;
 
             while ((zipEntry = zipInputStream.getNextEntry()) != null) {
                 File newFile = new File(versionDir + "/" + zipEntry.getName());
@@ -467,21 +439,27 @@ public class IonicDeploy extends CordovaPlugin {
                 outputBuffer.close();
 
                 extracted += 1;
-                logMessage("EXTRACT", Integer.toString(extracted));
 
-                PluginResult progressResult = new PluginResult(PluginResult.Status.OK, (int) (extracted * 100 / entries));
+                float progress = (extracted / entries) * new Float("100.0f");
+                logMessage("EXTRACT", "Progress: " + (int) progress + "%");
+
+                PluginResult progressResult = new PluginResult(PluginResult.Status.OK, (int) progress);
                 progressResult.setKeepCallback(true);
                 callbackContext.sendPluginResult(progressResult);
             }
             zipInputStream.close();
 
             // We also need to copy cordova.js from the binary www directory so the plugins work
-            copyFile("www/cordova.js", new File(versionDir.getAbsolutePath().toString() + "/cordova.js"));
+            //copyFile("www/cordova.js", new File(versionDir.getAbsolutePath().toString() + "/cordova.js"));
+            //copyFile("www/cordova_plugins.js", new File(versionDir.getAbsolutePath().toString() + "/cordova_plugins.js"));
 
         } catch(Exception e) {
             //TODO Handle problems..
             logMessage("UNZIP_STEP", "Exception: " + e.getMessage());
         }
+
+        // Save the version we just downloaded as a version on hand
+        saveVersion(upstream_uuid);
 
         callbackContext.success("done");
     }
@@ -514,14 +492,16 @@ public class IonicDeploy extends CordovaPlugin {
 
                 // this will be useful to display download percentage
                 // might be -1: server did not report the length
-                int fileLength = connection.getContentLength();
+                float fileLength = new Float(connection.getContentLength());
+
+                logMessage("DOWNLOAD", "File size: " + fileLength);
 
                 // download the file
                 input = connection.getInputStream();
                 output = this.myContext.openFileOutput("www.zip", Context.MODE_PRIVATE);
 
                 byte data[] = new byte[4096];
-                long total = 0;
+                float total = 0;
                 int count;
                 while ((count = input.read(data)) != -1) {
                     total += count;
@@ -530,8 +510,9 @@ public class IonicDeploy extends CordovaPlugin {
 
                     // Send the current download progress to a callback
                     if (fileLength > 0) {
-                        int progress = (int) (total * 100 / fileLength);
-                        PluginResult progressResult = new PluginResult(PluginResult.Status.OK, (int) (total * 100 / fileLength));
+                        float progress = (total / fileLength) * new Float("100.0f");
+                        logMessage("DOWNLOAD", "Progress: " + (int) progress + "%");
+                        PluginResult progressResult = new PluginResult(PluginResult.Status.OK, (int) progress);
                         progressResult.setKeepCallback(true);
                         callbackContext.sendPluginResult(progressResult);
                     }
@@ -559,9 +540,6 @@ public class IonicDeploy extends CordovaPlugin {
             String uuid = prefs.getString("upstream_uuid", "");
 
             prefs.edit().putString("uuid", uuid).apply();
-
-            // Save the version we just downloaded as a version on hand
-            saveVersion(uuid);
 
             callbackContext.success("true");
             return null;

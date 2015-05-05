@@ -14,6 +14,7 @@
 @property NSString *appId;
 @property NSString *currentUUID;
 @property dispatch_queue_t serialQueue;
+@property NSString *cordova_js_resource;
 
 @end
 
@@ -27,7 +28,21 @@ typedef struct JsonHttpResponse {
 @implementation IonicDeploy
 
 - (void) pluginInitialize {
+    self.cordova_js_resource = [[NSBundle mainBundle] pathForResource:@"www/cordova" ofType:@"js"];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pageDidLoad:) name:CDVPageDidLoadNotification object:self.webView];
     self.serialQueue = dispatch_queue_create("Deploy Plugin Queue", NULL);
+}
+
+- (void) setPage:(NSString *)url {
+    NSString *js = [NSString stringWithFormat:@"window.localStorage.setItem('_ionic_web_start', '%@');", url];
+    NSLog(@"Set localStorage page: %@", js);
+    [self.commandDelegate evalJs:js];
+}
+
+- (void) pageDidLoad:(UIWebView *)webView {
+    NSString *js = [NSString stringWithFormat:@"window.localStorage.setItem('_ionic_cordova_js_resource', '%@');", self.cordova_js_resource];
+    [self.commandDelegate evalJs:js];
+    [self setPage:self.webView.request.mainDocumentURL.absoluteString];
 }
 
 - (void) check:(CDVInvokedUrlCommand *)command {
@@ -149,35 +164,6 @@ typedef struct JsonHttpResponse {
 
         [SSZipArchive unzipFileAtPath:filePath toDestination:extractPath delegate:self];
 
-        NSURL *currentAppDirectoryURL = [self.webView.request.mainDocumentURL URLByDeletingLastPathComponent];
-        NSString *currentAppDirectoryPath = [currentAppDirectoryURL path];
-        NSString *cordovaSrcPath = [NSString stringWithFormat:@"%@/%@", currentAppDirectoryPath, @"cordova.js"];
-        NSString *cordovaPluginsSrcPath = [NSString stringWithFormat:@"%@/%@", currentAppDirectoryPath, @"cordova_plugins.js"];
-        NSString *pluginsSrcPath = [NSString stringWithFormat:@"%@/%@", currentAppDirectoryPath, @"plugins/"];
-
-        NSString *cordovaDestPath = [NSString stringWithFormat:@"%@/%@", extractPath, @"cordova.js"];
-        NSString *cordovaPluginsDestPath = [NSString stringWithFormat:@"%@/%@", extractPath, @"cordova_plugins.js"];
-        NSString *pluginsDestPath = [NSString stringWithFormat:@"%@/%@", extractPath, @"plugins/"];
-
-        NSError* err = nil;
-        [[NSFileManager defaultManager] copyItemAtPath:cordovaSrcPath toPath:cordovaDestPath error:&err];
-
-        if ( err != nil ){
-            NSLog(@"There was an error: %@", err);
-        }
-
-        [[NSFileManager defaultManager] copyItemAtPath:cordovaPluginsSrcPath toPath:cordovaPluginsDestPath error:&err];
-
-        if ( err != nil ){
-            NSLog(@"There was an error: %@", err);
-        }
-
-        [[NSFileManager defaultManager] copyItemAtPath:pluginsSrcPath toPath:pluginsDestPath error:&err];
-
-        if ( err != nil ){
-            NSLog(@"There was an error: %@", err);
-        }
-
         NSLog(@"Unzipped...");
     });
 }
@@ -212,6 +198,8 @@ typedef struct JsonHttpResponse {
 
         self.currentUUID = uuid;
 
+        NSString *page_path = [NSString stringWithFormat:@"file://%@", indexPath];
+        [self setPage:page_path];
         NSLog(@"Redirecting to: %@", indexPath);
         [self.commandDelegate evalJs:[NSString stringWithFormat:@"window.location='file://%@'", indexPath]];
     }
@@ -359,7 +347,7 @@ typedef struct JsonHttpResponse {
 
     self.progress = ((100.0 / download.expectedContentLength) * download.progressContentLength);
 
-    NSLog(@"%.0f%%", ((100.0 / download.expectedContentLength) * download.progressContentLength));
+    NSLog(@"Download Progress: %.0f%%", ((100.0 / download.expectedContentLength) * download.progressContentLength));
 
     CDVPluginResult* pluginResult = nil;
 

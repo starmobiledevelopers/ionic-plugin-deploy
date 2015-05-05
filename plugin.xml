@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
-    id="com.ionic.update"
-    version="0.0.5">
+    id="com.ionic.deploy"
+    version="0.1.0">
     <name>IonicDeploy</name>
     <description>Ionic Deploy Plugin</description>
     <license>Apache 2.0</license>
-    <keywords>Ionic,update</keywords>
+    <keywords>Ionic,deploy</keywords>
     <repo>https://github.com/driftyco/ionic-plugins-deploy</repo>
     <issue>https://github.com/driftyco/ionic-plugins-deploy/issues</issue>
 
@@ -18,7 +18,7 @@
     <platform name="android">
         <config-file target="res/xml/config.xml" parent="/*">
             <feature name="IonicDeploy">
-                <param name="android-package" value="com.ionic.update.IonicDeploy"/>
+                <param name="android-package" value="com.ionic.deploy.IonicDeploy"/>
             </feature>
         </config-file>
 
