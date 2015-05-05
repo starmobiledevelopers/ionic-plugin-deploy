@@ -75,6 +75,7 @@ public class IonicDeploy extends CordovaPlugin {
         final SharedPreferences prefs = getPreferences();
 
         if (action.equals("initialize")) {
+            prefs.edit().putString("loaded_uuid", "").apply();
             return true;
         } else if (action.equals("check")) {
             logMessage("CHECK", "Checking for updates");
@@ -104,16 +105,21 @@ public class IonicDeploy extends CordovaPlugin {
         } else if (action.equals("redirect")) {
             logMessage("REDIRECT", "Preparing redirect");
 
-            String uuid = prefs.getString("uuid", "");
-            final File versionDir = this.myContext.getDir(uuid, Context.MODE_PRIVATE);
+            String loaded_uuid = prefs.getString("loaded_uuid", "");
+            final String uuid = prefs.getString("uuid", "");
+            if (!loaded_uuid.equals(uuid)){
+                final File versionDir = this.myContext.getDir(uuid, Context.MODE_PRIVATE);
+                logMessage("REDIRECT", uuid);
 
-            cordova.getActivity().runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    logMessage("REDIRECT", versionDir.toURI() + "index.html");
-                    webView.loadUrl(versionDir.toURI() + "index.html");
-                }
-            });
+                cordova.getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        logMessage("REDIRECT", versionDir.toURI() + "index.html");
+                        prefs.edit().putString("loaded_uuid", uuid).apply();
+                        webView.loadUrl(versionDir.toURI() + "index.html");
+                    }
+                });
+            }
             return true;
         } else {
             return false;
@@ -433,7 +439,7 @@ public class IonicDeploy extends CordovaPlugin {
                 outputBuffer.close();
 
                 extracted += 1;
-                
+
                 float progress = (extracted / entries) * new Float("100.0f");
                 logMessage("EXTRACT", "Progress: " + (int) progress + "%");
 
