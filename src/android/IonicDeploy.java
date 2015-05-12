@@ -75,7 +75,8 @@ public class IonicDeploy extends CordovaPlugin {
         final SharedPreferences prefs = getPreferences();
 
         if (action.equals("initialize")) {
-            prefs.edit().putString("loaded_uuid", "").apply();
+            String test_loaded_uuid = prefs.getString("loaded_uuid", "");
+            prefs.edit().putString("loaded_uuid", test_loaded_uuid).apply();
             return true;
         } else if (action.equals("check")) {
             logMessage("CHECK", "Checking for updates");
