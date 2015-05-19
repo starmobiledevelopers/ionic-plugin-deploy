@@ -39,6 +39,12 @@ typedef struct JsonHttpResponse {
     [self.commandDelegate evalJs:js];
 }
 
+- (void) setResource:(NSString *)resource {
+    NSString *js = [NSString stringWithFormat:@"window.localStorage.setItem('_ionic_cordova_js_resource', '%@');", resource];
+    NSLog(@"Set localStorage resource: %@", js);
+    [self.commandDelegate evalJs:js];
+}
+
 - (void) pageDidLoad:(UIWebView *)webView {
     NSString *js = [NSString stringWithFormat:@"window.localStorage.setItem('_ionic_cordova_js_resource', '%@');", self.cordova_js_resource];
     [self.commandDelegate evalJs:js];
@@ -200,6 +206,7 @@ typedef struct JsonHttpResponse {
 
         NSString *page_path = [NSString stringWithFormat:@"file://%@", indexPath];
         [self setPage:page_path];
+        [self setResource:self.cordova_js_resource];
         NSLog(@"Redirecting to: %@", indexPath);
         [self.commandDelegate evalJs:[NSString stringWithFormat:@"window.location='file://%@'", indexPath]];
     }
