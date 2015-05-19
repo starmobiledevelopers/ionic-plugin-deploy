@@ -76,6 +76,7 @@ public class IonicDeploy extends CordovaPlugin {
 
         if (action.equals("initialize")) {
             String test_loaded_uuid = prefs.getString("loaded_uuid", "");
+            logMessage("INITIALIZE_LOADED_UUID", test_loaded_uuid);
             prefs.edit().putString("loaded_uuid", test_loaded_uuid).apply();
             return true;
         } else if (action.equals("check")) {
@@ -107,8 +108,10 @@ public class IonicDeploy extends CordovaPlugin {
             logMessage("REDIRECT", "Preparing redirect");
 
             String loaded_uuid = prefs.getString("loaded_uuid", "");
+            logMessage("REDIRECT_LOADED_UUID", loaded_uuid);
             final String uuid = prefs.getString("uuid", "");
-            if (!loaded_uuid.equals(uuid)){
+            logMessage("REDIRECT_UUID", uuid);
+            if (!loaded_uuid.equals(uuid) || (loaded_uuid.equals(uuid) && !loaded_uuid.equals("") && !"yes".equals(prefs.getString("deploy_redirect", ""))) ) {
                 final File versionDir = this.myContext.getDir(uuid, Context.MODE_PRIVATE);
                 logMessage("REDIRECT", uuid);
 
@@ -116,10 +119,13 @@ public class IonicDeploy extends CordovaPlugin {
                     @Override
                     public void run() {
                         logMessage("REDIRECT", versionDir.toURI() + "index.html");
+                        prefs.edit().putString("deploy_redirect", "yes").apply();
                         prefs.edit().putString("loaded_uuid", uuid).apply();
                         webView.loadUrl(versionDir.toURI() + "index.html");
                     }
                 });
+            } else if ("yes".equals(prefs.getString("deploy_redirect", ""))) {
+                prefs.edit().putString("deploy_redirect", "no");
             }
             return true;
         } else {
