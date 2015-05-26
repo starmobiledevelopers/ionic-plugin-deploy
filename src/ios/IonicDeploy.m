@@ -29,26 +29,12 @@ typedef struct JsonHttpResponse {
 
 - (void) pluginInitialize {
     self.cordova_js_resource = [[NSBundle mainBundle] pathForResource:@"www/cordova" ofType:@"js"];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pageDidLoad:) name:CDVPageDidLoadNotification object:self.webView];
     self.serialQueue = dispatch_queue_create("Deploy Plugin Queue", NULL);
 }
 
-- (void) setPage:(NSString *)url {
-    NSString *js = [NSString stringWithFormat:@"window.localStorage.setItem('_ionic_web_start', '%@');", url];
-    NSLog(@"Set localStorage page: %@", js);
-    [self.commandDelegate evalJs:js];
-}
-
-- (void) setResource:(NSString *)resource {
-    NSString *js = [NSString stringWithFormat:@"window.localStorage.setItem('_ionic_cordova_js_resource', '%@');", resource];
-    NSLog(@"Set localStorage resource: %@", js);
-    [self.commandDelegate evalJs:js];
-}
-
-- (void) pageDidLoad:(UIWebView *)webView {
-    NSString *js = [NSString stringWithFormat:@"window.localStorage.setItem('_ionic_cordova_js_resource', '%@');", self.cordova_js_resource];
-    [self.commandDelegate evalJs:js];
-    [self setPage:self.webView.request.mainDocumentURL.absoluteString];
+- (void)onReset {
+    // redirect to latest deploy
+    [self doRedirect];
 }
 
 - (void) check:(CDVInvokedUrlCommand *)command {
@@ -190,25 +176,21 @@ typedef struct JsonHttpResponse {
 
     dispatch_async(self.serialQueue, ^{
     if ( uuid != nil && ![self.currentUUID isEqualToString: uuid] ) {
-        int versionCount = [[NSUserDefaults standardUserDefaults] integerForKey:@"version_count"];
-
-        NSString *versionString = [NSString stringWithFormat:@"%i|%@", versionCount, uuid];
         NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
         NSString *documentsDirectory = [paths objectAtIndex:0];
 
 
-        NSString *indexPath = [NSString stringWithFormat:@"%@/%@/index.html", documentsDirectory, uuid];
-
-        NSURL *urlOverwrite = [NSURL fileURLWithPath:indexPath];
-        NSURLRequest *request = [NSURLRequest requestWithURL:urlOverwrite];
+        NSString *query = [NSString stringWithFormat:@"cordova_js_bootstrap_resource=%@", self.cordova_js_resource];
+        
+        NSURLComponents *components = [NSURLComponents new];
+        components.scheme = @"file";
+        components.path = [NSString stringWithFormat:@"%@/%@/index.html", documentsDirectory, uuid];
+        components.query = query;
 
         self.currentUUID = uuid;
 
-        NSString *page_path = [NSString stringWithFormat:@"file://%@", indexPath];
-        [self setPage:page_path];
-        [self setResource:self.cordova_js_resource];
-        NSLog(@"Redirecting to: %@", indexPath);
-        [self.commandDelegate evalJs:[NSString stringWithFormat:@"window.location='file://%@'", indexPath]];
+        NSLog(@"Redirecting to: %@", components.URL.absoluteString);
+        [self.webView loadRequest: [NSURLRequest requestWithURL:components.URL] ];
     }
     });
 }
@@ -242,7 +224,7 @@ typedef struct JsonHttpResponse {
         NSLog(@"JSON Error: %@", jsonError);
 
         if (jsonError != nil) {
-            response.message = (@"%@", [jsonError localizedDescription]);
+            response.message = [NSString stringWithFormat:@"%@", [jsonError localizedDescription]];
             response.json = nil;
         }
     }
@@ -285,7 +267,7 @@ typedef struct JsonHttpResponse {
     NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
     NSMutableArray *versions = [self getMyVersions];
 
-    int versionCount = [[NSUserDefaults standardUserDefaults] integerForKey:@"version_count"];
+    int versionCount = (int) [[NSUserDefaults standardUserDefaults] integerForKey:@"version_count"];
 
     if (versionCount) {
         versionCount += 1;
@@ -310,7 +292,7 @@ typedef struct JsonHttpResponse {
     NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
     NSMutableArray *versions = [self getMyVersions];
 
-    int versionCount = [[NSUserDefaults standardUserDefaults] integerForKey:@"version_count"];
+    int versionCount = (int) [[NSUserDefaults standardUserDefaults] integerForKey:@"version_count"];
 
     if (versionCount && versionCount > 3) {
         NSInteger threshold = versionCount - 3;
@@ -326,7 +308,7 @@ typedef struct JsonHttpResponse {
             }
         }
 
-        NSLog(@"Version Count: %i", [versions count]);
+        NSLog(@"Version Count: %i", (int) [versions count]);
         [prefs setObject:versions forKey:@"my_versions"];
         [prefs synchronize];
     }
