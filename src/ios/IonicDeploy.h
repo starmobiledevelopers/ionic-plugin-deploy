@@ -1,14 +1,12 @@
 #import <Cordova/CDV.h>
 #import "DownloadManager.h"
+#import "SSZipArchive.h"
 
 //@interface IonicDeploy : CDVPlugin <NSURLConnectionDataDelegate>
-@interface IonicDeploy : CDVPlugin
+@interface IonicDeploy : CDVPlugin <DownloadManagerDelegate, SSZipArchiveDelegate>
 
 @property (strong, nonatomic) DownloadManager *downloadManager;
 
-- (void) initialize:(CDVInvokedUrlCommand *)command;
-
-- (void) setPage:(NSString *)url;
 
 - (void) check:(CDVInvokedUrlCommand *)command;
 

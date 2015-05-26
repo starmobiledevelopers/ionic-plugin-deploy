@@ -44,6 +44,8 @@ public class IonicDeploy extends CordovaPlugin {
     Context myContext = null;
     String app_id = null;
     boolean debug = true;
+    SharedPreferences prefs = null;
+    CordovaWebView v = null;
 
     /**
      * Sets the context of the Command. This can then be used to do things like
@@ -54,11 +56,25 @@ public class IonicDeploy extends CordovaPlugin {
      */
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         super.initialize(cordova, webView);
-
         this.myContext = this.cordova.getActivity().getApplicationContext();
-        SharedPreferences prefs = getPreferences();
+        this.prefs = getPreferences();
+        this.v = webView;
+    }
 
-        this.app_id = prefs.getString("app_id", "");
+    public Object onMessage(String id, Object data) {
+        boolean is_nothing = "file:///".equals(String.valueOf(data));
+        boolean is_index = "file:///android_asset/www/index.html".equals(String.valueOf(data));
+        boolean is_original = (is_nothing || is_index) ? true : false;
+
+        if("onPageStarted".equals(id) && is_original) {
+            final String uuid = prefs.getString("uuid", "NO_DEPLOY_AVAILABLE");
+
+            if(!"NO_DEPLOY_AVAILABLE".equals(uuid)) {
+                logMessage("LOAD", "Init Deploy Version");
+                this.redirect(uuid, false);
+            }
+        }
+        return null;
     }
 
     /**
@@ -71,13 +87,15 @@ public class IonicDeploy extends CordovaPlugin {
      */
     public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
 
+        this.app_id = args.getString(0);
+        this.prefs = getPreferences();
+
         initApp(args.getString(0));
-        final SharedPreferences prefs = getPreferences();
+        
+        final SharedPreferences prefs = this.prefs;
 
         if (action.equals("initialize")) {
-            String test_loaded_uuid = prefs.getString("loaded_uuid", "");
-            logMessage("INITIALIZE_LOADED_UUID", test_loaded_uuid);
-            prefs.edit().putString("loaded_uuid", test_loaded_uuid).apply();
+            // No need to do anything here.
             return true;
         } else if (action.equals("check")) {
             logMessage("CHECK", "Checking for updates");
@@ -105,28 +123,8 @@ public class IonicDeploy extends CordovaPlugin {
             });
             return true;
         } else if (action.equals("redirect")) {
-            logMessage("REDIRECT", "Preparing redirect");
-
-            String loaded_uuid = prefs.getString("loaded_uuid", "");
-            logMessage("REDIRECT_LOADED_UUID", loaded_uuid);
             final String uuid = prefs.getString("uuid", "");
-            logMessage("REDIRECT_UUID", uuid);
-            if (!loaded_uuid.equals(uuid) || (loaded_uuid.equals(uuid) && !loaded_uuid.equals("") && !"yes".equals(prefs.getString("deploy_redirect", ""))) ) {
-                final File versionDir = this.myContext.getDir(uuid, Context.MODE_PRIVATE);
-                logMessage("REDIRECT", uuid);
-
-                cordova.getActivity().runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        logMessage("REDIRECT", versionDir.toURI() + "index.html");
-                        prefs.edit().putString("deploy_redirect", "yes").apply();
-                        prefs.edit().putString("loaded_uuid", uuid).apply();
-                        webView.loadUrl(versionDir.toURI() + "index.html");
-                    }
-                });
-            } else if ("yes".equals(prefs.getString("deploy_redirect", ""))) {
-                prefs.edit().putString("deploy_redirect", "no");
-            }
+            this.redirect(uuid, true);
             return true;
         } else {
             return false;
@@ -134,10 +132,8 @@ public class IonicDeploy extends CordovaPlugin {
     }
 
     private void initApp(String app_id) {
-        logMessage("INIT", "Initializing with App ID: " + app_id);
-
         this.app_id = app_id;
-        SharedPreferences prefs = getPreferences();
+        SharedPreferences prefs = this.prefs;
 
         prefs.edit().putString("app_id", this.app_id).apply();
         // Used for keeping track of the order versions were downloaded
@@ -150,7 +146,7 @@ public class IonicDeploy extends CordovaPlugin {
 
         // Request shared preferences for this app id
         // Also, is there a way to pull the package name and fill it in on build?
-        SharedPreferences prefs = getPreferences();
+        SharedPreferences prefs = this.prefs;
 
         String our_version = prefs.getString("uuid", "");
 
@@ -180,7 +176,7 @@ public class IonicDeploy extends CordovaPlugin {
         String endpoint = "/api/v1/app/" + this.app_id + "/updates/download";
 
         // First, let's check to see if we have the upstream version already
-        SharedPreferences prefs = getPreferences();
+        SharedPreferences prefs = this.prefs;
 
         String upstream_uuid = prefs.getString("upstream_uuid", "");
 
@@ -211,7 +207,7 @@ public class IonicDeploy extends CordovaPlugin {
      * @return
      */
     private Set<String> getMyVersions() {
-        SharedPreferences prefs = getPreferences();
+        SharedPreferences prefs = this.prefs;
 
         return prefs.getStringSet("my_versions", new HashSet<String>());
     }
@@ -245,7 +241,7 @@ public class IonicDeploy extends CordovaPlugin {
      * @param uuid
      */
     private void saveVersion(String uuid) {
-        SharedPreferences prefs = getPreferences();
+        SharedPreferences prefs = this.prefs;
 
         Integer version_count = prefs.getInt("version_count", 0) + 1;
         prefs.edit().putInt("version_count", version_count).apply();
@@ -263,7 +259,7 @@ public class IonicDeploy extends CordovaPlugin {
 
     private void cleanupVersions() {
         // Let's keep 5 versions around for now
-        SharedPreferences prefs = getPreferences();
+        SharedPreferences prefs = this.prefs;
 
         int version_count = prefs.getInt("version_count", 0);
         Set<String> versions = this.getMyVersions();
@@ -332,7 +328,9 @@ public class IonicDeploy extends CordovaPlugin {
             urlConnection.disconnect();
         }
 
-        logMessage("HTTPR", "Message: " + response.message);
+        if(response.message != null) {
+            logMessage("HTTPR", "Message: " + response.message);
+        }
 
         return response;
     }
@@ -340,7 +338,7 @@ public class IonicDeploy extends CordovaPlugin {
     private SharedPreferences getPreferences() {
         // Request shared preferences for this app id
         SharedPreferences prefs = this.myContext.getSharedPreferences(
-                "com.ionic." + this.app_id, Context.MODE_PRIVATE
+                "com.ionic.deploy.preferences", Context.MODE_PRIVATE
         );
 
         return prefs;
@@ -362,7 +360,7 @@ public class IonicDeploy extends CordovaPlugin {
 
     private void logMessage(String tag, String message) {
         if (this.debug == true) {
-            Log.i(tag, message);
+            Log.i("IONIC.DEPLOY." + tag, message);
         }
     }
 
@@ -469,6 +467,23 @@ public class IonicDeploy extends CordovaPlugin {
         saveVersion(upstream_uuid);
 
         callbackContext.success("done");
+    }
+
+    private void redirect(final String uuid, final boolean recreatePlugins) {
+        if (!uuid.equals("")) {
+            prefs.edit().putString("uuid", uuid).apply();
+            final File versionDir = this.myContext.getDir(uuid, Context.MODE_PRIVATE);
+            final String deploy_url = versionDir.toURI() + "index.html";
+
+            cordova.getActivity().runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    logMessage("REDIRECT", "Loading deploy version: " + uuid);
+                    prefs.edit().putString("loaded_uuid", uuid).apply();
+                    webView.loadUrlIntoView(deploy_url, recreatePlugins);
+                }
+            });
+        }
     }
 
     private class DownloadTask extends AsyncTask<String, Integer, String> {
