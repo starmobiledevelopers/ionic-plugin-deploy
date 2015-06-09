@@ -155,8 +155,9 @@ typedef struct JsonHttpResponse {
         NSLog(@"Unzipping...");
 
         [SSZipArchive unzipFileAtPath:filePath toDestination:extractPath delegate:self];
-
+        BOOL success = [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
         NSLog(@"Unzipped...");
+        NSLog(@"Removing www.zip %d", success);
     });
 }
 
