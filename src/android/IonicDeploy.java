@@ -466,8 +466,21 @@ public class IonicDeploy extends CordovaPlugin {
         // Save the version we just downloaded as a version on hand
         saveVersion(upstream_uuid);
 
+        String wwwFile = this.myContext.getFileStreamPath(zip).getAbsolutePath().toString();
+        if (this.myContext.getFileStreamPath(zip).exists()) {
+            String deleteCmd = "rm -r " + wwwFile;
+            Runtime runtime = Runtime.getRuntime();
+            try {
+                runtime.exec(deleteCmd);
+                logMessage("REMOVE", "Removed www.zip");
+            } catch (IOException e) {
+                logMessage("REMOVE", "Failed to remove " + wwwFile + ". Error: " + e.getMessage());
+            }
+        }
+
         callbackContext.success("done");
     }
+
 
     private void redirect(final String uuid, final boolean recreatePlugins) {
         if (!uuid.equals("")) {

@@ -126,9 +126,9 @@ typedef struct JsonHttpResponse {
 
             NSURL *url = [NSURL URLWithString:download_url];
 
-            NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-            NSString *documentsDirectory = [paths objectAtIndex:0];
-            NSString *filePath = [NSString stringWithFormat:@"%@/%@", documentsDirectory,@"www.zip"];
+            NSArray *paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
+            NSString *libraryDirectory = [paths objectAtIndex:0];
+            NSString *filePath = [NSString stringWithFormat:@"%@/%@", libraryDirectory,@"www.zip"];
 
             NSLog(@"Queueing Download...");
             [self.downloadManager addDownloadWithFilename:filePath URL:url];
@@ -142,21 +142,22 @@ typedef struct JsonHttpResponse {
     dispatch_async(self.serialQueue, ^{
         self.callbackId = command.callbackId;
 
-        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-        NSString *documentsDirectory = [paths objectAtIndex:0];
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
+        NSString *libraryDirectory = [paths objectAtIndex:0];
 
         NSString *uuid = [[NSUserDefaults standardUserDefaults] objectForKey:@"uuid"];
 
-        NSString *filePath = [NSString stringWithFormat:@"%@/%@", documentsDirectory, @"www.zip"];
-        NSString *extractPath = [NSString stringWithFormat:@"%@/%@/", documentsDirectory, uuid];
+        NSString *filePath = [NSString stringWithFormat:@"%@/%@", libraryDirectory, @"www.zip"];
+        NSString *extractPath = [NSString stringWithFormat:@"%@/%@/", libraryDirectory, uuid];
 
         NSLog(@"Path for zip file: %@", filePath);
 
         NSLog(@"Unzipping...");
 
         [SSZipArchive unzipFileAtPath:filePath toDestination:extractPath delegate:self];
-
+        BOOL success = [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
         NSLog(@"Unzipped...");
+        NSLog(@"Removing www.zip %d", success);
     });
 }
 
@@ -176,15 +177,15 @@ typedef struct JsonHttpResponse {
 
     dispatch_async(self.serialQueue, ^{
     if ( uuid != nil && ![self.currentUUID isEqualToString: uuid] ) {
-        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-        NSString *documentsDirectory = [paths objectAtIndex:0];
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
+        NSString *libraryDirectory = [paths objectAtIndex:0];
 
 
         NSString *query = [NSString stringWithFormat:@"cordova_js_bootstrap_resource=%@", self.cordova_js_resource];
         
         NSURLComponents *components = [NSURLComponents new];
         components.scheme = @"file";
-        components.path = [NSString stringWithFormat:@"%@/%@/index.html", documentsDirectory, uuid];
+        components.path = [NSString stringWithFormat:@"%@/%@/index.html", libraryDirectory, uuid];
         components.query = query;
 
         self.currentUUID = uuid;
@@ -315,10 +316,10 @@ typedef struct JsonHttpResponse {
 }
 
 - (void) removeVersion:(NSString *) uuid {
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    NSString *documentsDirectory = [paths objectAtIndex:0];
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
+    NSString *libraryDirectory = [paths objectAtIndex:0];
 
-    NSString *pathToFolder = [NSString stringWithFormat:@"%@/%@/", documentsDirectory, uuid];
+    NSString *pathToFolder = [NSString stringWithFormat:@"%@/%@/", libraryDirectory, uuid];
 
     BOOL success = [[NSFileManager defaultManager] removeItemAtPath:pathToFolder error:nil];
 
