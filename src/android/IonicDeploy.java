@@ -87,27 +87,25 @@ public class IonicDeploy extends CordovaPlugin {
     }
 
     private void initVersionChecks() {
-        boolean havePackage = false;
         String ionicdeploy_version_label = IonicDeploy.NO_DEPLOY_LABEL;
         String uuid = this.getUUID();
 
         try {
-            PackageInfo packageInfo = this.getAppPackageInfo();
-            ionicdeploy_version_label = this.constructVersionLabel(packageInfo, uuid);
-            havePackage = true;
+            ionicdeploy_version_label = this.constructVersionLabel(this.getAppPackageInfo(), uuid);
         } catch (NameNotFoundException e) {
             logMessage("INIT", "Could not get package info");
         }
 
-        if(havePackage) {
-            logMessage("INIT", "Version Label 1: " + this.version_label);
-            logMessage("INIT", "Version Label 2: " + ionicdeploy_version_label);
-
+        if(!ionicdeploy_version_label.equals(IonicDeploy.NO_DEPLOY_LABEL)) {
+            if(this.debug) {
+                logMessage("INIT", "Version Label 1: " + this.version_label);
+                logMessage("INIT", "Version Label 2: " + ionicdeploy_version_label);
+                logMessage("INIT", "Version Label 2: " + prefs.getString("ionicdeploy_version_ignore", IonicDeploy.NOTHING_TO_IGNORE));
+            }
             if(!this.version_label.equals(ionicdeploy_version_label)) {
                 this.ignore_deploy = true;
-                this.prefs.edit().putString("ionicdeploy_version_label", ionicdeploy_version_label).apply();
-                this.prefs.edit().putString("ionicdeploy_version_ignore", uuid).apply();
-                this.version_label = prefs.getString("ionicdeploy_version_label", IonicDeploy.NO_DEPLOY_LABEL);
+                this.updateVersionLabel(uuid);
+                this.prefs.edit().remove("uuid").apply();
             }
         }
     }
@@ -425,11 +423,12 @@ public class IonicDeploy extends CordovaPlugin {
         }
     }
 
-    private void updateVersionLabel() {
+    private void updateVersionLabel(String ignore_version) {
         try {
             String ionicdeploy_version_label = this.constructVersionLabel(this.getAppPackageInfo(), this.getUUID());
             this.prefs.edit().putString("ionicdeploy_version_label", ionicdeploy_version_label).apply();
-            this.prefs.edit().putString("ionicdeploy_version_ignore", IonicDeploy.NO_DEPLOY_AVAILABLE).apply();
+            this.version_label = prefs.getString("ionicdeploy_version_label", IonicDeploy.NO_DEPLOY_LABEL);
+            this.prefs.edit().putString("ionicdeploy_version_ignore", ignore_version).apply();
         } catch (NameNotFoundException e) {
             logMessage("LABEL", "Could not get package info");
         }
@@ -448,7 +447,7 @@ public class IonicDeploy extends CordovaPlugin {
         logMessage("UNZIP", upstream_uuid);
 
         this.ignore_deploy = false;
-        this.updateVersionLabel();
+        this.updateVersionLabel(IonicDeploy.NOTHING_TO_IGNORE);
 
         if (upstream_uuid != "" && this.hasVersion(upstream_uuid)) {
             callbackContext.success("done"); // we have already extracted this version
