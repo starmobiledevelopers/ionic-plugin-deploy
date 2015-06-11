@@ -1,10 +1,13 @@
 package com.ionic.deploy;
 
 import android.content.Context;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.content.res.AssetManager;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.util.Log;
-import android.content.res.AssetManager;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
@@ -46,6 +49,12 @@ public class IonicDeploy extends CordovaPlugin {
     boolean debug = true;
     SharedPreferences prefs = null;
     CordovaWebView v = null;
+    String version_label = null;
+    boolean ignore_deploy = false;
+
+    final public static String NO_DEPLOY_LABEL = "NO_DEPLOY_LABEL";
+    final public static String NO_DEPLOY_AVAILABLE = "NO_DEPLOY_AVAILABLE";
+    final public static String NOTHING_TO_IGNORE = "NOTHING_TO_IGNORE";
 
     /**
      * Sets the context of the Command. This can then be used to do things like
@@ -59,6 +68,58 @@ public class IonicDeploy extends CordovaPlugin {
         this.myContext = this.cordova.getActivity().getApplicationContext();
         this.prefs = getPreferences();
         this.v = webView;
+        this.version_label = prefs.getString("ionicdeploy_version_label", IonicDeploy.NO_DEPLOY_LABEL);
+        this.initVersionChecks();
+    }
+
+    private String getUUID() {
+        return this.prefs.getString("uuid", IonicDeploy.NO_DEPLOY_AVAILABLE);
+    }
+
+    private String getUUID(String defaultUUID) {
+        return this.prefs.getString("uuid", defaultUUID);
+    }
+
+    private PackageInfo getAppPackageInfo() throws NameNotFoundException {
+        PackageManager packageManager = this.cordova.getActivity().getPackageManager();
+        PackageInfo packageInfo = packageManager.getPackageInfo(this.cordova.getActivity().getPackageName(), 0);
+        return packageInfo;
+    }
+
+    private void initVersionChecks() {
+        boolean havePackage = false;
+        String ionicdeploy_version_label = IonicDeploy.NO_DEPLOY_LABEL;
+        String uuid = this.getUUID();
+
+        try {
+            PackageInfo packageInfo = this.getAppPackageInfo();
+            ionicdeploy_version_label = this.constructVersionLabel(packageInfo, uuid);
+            havePackage = true;
+        } catch (NameNotFoundException e) {
+            logMessage("INIT", "Could not get package info");
+        }
+
+        if(havePackage) {
+            logMessage("INIT", "Version Label 1: " + this.version_label);
+            logMessage("INIT", "Version Label 2: " + ionicdeploy_version_label);
+
+            if(!this.version_label.equals(ionicdeploy_version_label)) {
+                this.ignore_deploy = true;
+                this.prefs.edit().putString("ionicdeploy_version_label", ionicdeploy_version_label).apply();
+                this.prefs.edit().putString("ionicdeploy_version_ignore", uuid).apply();
+                this.version_label = prefs.getString("ionicdeploy_version_label", IonicDeploy.NO_DEPLOY_LABEL);
+            }
+        }
+    }
+
+    private String constructVersionLabel(PackageInfo packageInfo, String uuid) {
+        String version = packageInfo.versionName;
+        String timestamp = String.valueOf(packageInfo.lastUpdateTime);
+        return version + ":" + timestamp + ":" + uuid;
+    }
+
+    private String[] deconstructVersionLabel(String label) {
+        return label.split(":");
     }
 
     public Object onMessage(String id, Object data) {
@@ -67,9 +128,9 @@ public class IonicDeploy extends CordovaPlugin {
         boolean is_original = (is_nothing || is_index) ? true : false;
 
         if("onPageStarted".equals(id) && is_original) {
-            final String uuid = prefs.getString("uuid", "NO_DEPLOY_AVAILABLE");
+            final String uuid = this.getUUID();
 
-            if(!"NO_DEPLOY_AVAILABLE".equals(uuid)) {
+            if(!IonicDeploy.NO_DEPLOY_AVAILABLE.equals(uuid)) {
                 logMessage("LOAD", "Init Deploy Version");
                 this.redirect(uuid, false);
             }
@@ -115,15 +176,15 @@ public class IonicDeploy extends CordovaPlugin {
             return true;
         } else if (action.equals("extract")) {
             logMessage("EXTRACT", "Extracting update");
+            final String uuid = this.getUUID("");
             cordova.getThreadPool().execute(new Runnable() {
                 public void run() {
-                    String uuid = prefs.getString("uuid", "");
                     unzip("www.zip", uuid, callbackContext);
                 }
             });
             return true;
         } else if (action.equals("redirect")) {
-            final String uuid = prefs.getString("uuid", "");
+            final String uuid = this.getUUID("");
             this.redirect(uuid, true);
             return true;
         } else {
@@ -364,23 +425,14 @@ public class IonicDeploy extends CordovaPlugin {
         }
     }
 
-    private void copyFile(String src, File dst) throws IOException {
-        AssetManager assetManager = this.myContext.getAssets();
-
-        InputStream in = assetManager.open(src);
-        OutputStream out = new FileOutputStream(dst);
-
-        // Make sure that the full path for the target file exists
-        dst.getParentFile().mkdirs();
-
-        // Transfer bytes from in to out
-        byte[] buf = new byte[1024];
-        int len;
-        while ((len = in.read(buf)) > 0) {
-            out.write(buf, 0, len);
+    private void updateVersionLabel() {
+        try {
+            String ionicdeploy_version_label = this.constructVersionLabel(this.getAppPackageInfo(), this.getUUID());
+            this.prefs.edit().putString("ionicdeploy_version_label", ionicdeploy_version_label).apply();
+            this.prefs.edit().putString("ionicdeploy_version_ignore", IonicDeploy.NO_DEPLOY_AVAILABLE).apply();
+        } catch (NameNotFoundException e) {
+            logMessage("LABEL", "Could not get package info");
         }
-        in.close();
-        out.close();
     }
 
     /**
@@ -395,6 +447,9 @@ public class IonicDeploy extends CordovaPlugin {
 
         logMessage("UNZIP", upstream_uuid);
 
+        this.ignore_deploy = false;
+        this.updateVersionLabel();
+
         if (upstream_uuid != "" && this.hasVersion(upstream_uuid)) {
             callbackContext.success("done"); // we have already extracted this version
             return;
@@ -404,11 +459,6 @@ public class IonicDeploy extends CordovaPlugin {
             FileInputStream inputStream = this.myContext.openFileInput(zip);
             ZipInputStream zipInputStream = new ZipInputStream(inputStream);
             ZipEntry zipEntry = null;
-
-            // Something about the way the CLI creates zip files results in the file sizes not being part
-            // of the archive, so we can't get extraction progress via file sizes.
-            /*Integer finalSize = (int) new File(this.myContext.getFileStreamPath(zip).getAbsolutePath().toString()).length();
-            Log.i("FILE_SIZE", finalSize.toString());*/
 
             // Get the full path to the internal storage
             String filesDir = this.myContext.getFilesDir().toString();
@@ -454,10 +504,6 @@ public class IonicDeploy extends CordovaPlugin {
             }
             zipInputStream.close();
 
-            // We also need to copy cordova.js from the binary www directory so the plugins work
-            //copyFile("www/cordova.js", new File(versionDir.getAbsolutePath().toString() + "/cordova.js"));
-            //copyFile("www/cordova_plugins.js", new File(versionDir.getAbsolutePath().toString() + "/cordova_plugins.js"));
-
         } catch(Exception e) {
             //TODO Handle problems..
             logMessage("UNZIP_STEP", "Exception: " + e.getMessage());
@@ -483,7 +529,8 @@ public class IonicDeploy extends CordovaPlugin {
 
 
     private void redirect(final String uuid, final boolean recreatePlugins) {
-        if (!uuid.equals("")) {
+        String ignore = this.prefs.getString("ionicdeploy_version_ignore", IonicDeploy.NOTHING_TO_IGNORE);
+        if (!uuid.equals("") && !this.ignore_deploy && !uuid.equals(ignore)) {
             prefs.edit().putString("uuid", uuid).apply();
             final File versionDir = this.myContext.getDir(uuid, Context.MODE_PRIVATE);
             final String deploy_url = versionDir.toURI() + "index.html";
