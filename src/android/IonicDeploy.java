@@ -42,6 +42,27 @@ class JsonHttpResponse {
     JSONObject json;
 }
 
+class AppVersion {
+    int major = 0;
+    int minor = 0;
+    int patch = 0;
+
+    public static AppVersion create(String version) {
+        AppVersion appVersion = new AppVersion();
+        int[] parts = appVersion.getParts(version);
+        appVersion.major = parts[0];
+        appVersion.minor = parts[1];
+        appVersion.patch = parts[2];
+        return appVersion;
+    }
+
+    public int[] getParts(String versionLabel) {
+        String[] parts = versionLabel.split(".");
+        int[] final_parts = { (int) Integer.valueOf(parts[0]), (int) Integer.valueOf(parts[1]), (int) Integer.valueOf(parts[2]) };
+        return final_parts;
+    }
+}
+
 public class IonicDeploy extends CordovaPlugin {
     String server = "https://apps.ionic.io";
     Context myContext = null;
@@ -55,6 +76,9 @@ public class IonicDeploy extends CordovaPlugin {
     final public static String NO_DEPLOY_LABEL = "NO_DEPLOY_LABEL";
     final public static String NO_DEPLOY_AVAILABLE = "NO_DEPLOY_AVAILABLE";
     final public static String NOTHING_TO_IGNORE = "NOTHING_TO_IGNORE";
+    final public static int VERSION_AHEAD = 1;
+    final public static int VERSION_MATCH = 0;
+    final public static int VERSION_BEHIND = -1;
 
     /**
      * Sets the context of the Command. This can then be used to do things like
@@ -211,23 +235,36 @@ public class IonicDeploy extends CordovaPlugin {
         JsonHttpResponse response = httpRequest(endpoint);
 
         try {
-          logMessage("RESP", "Response JSON: " + response.json);
+            if (response.json != null) {
+                String deployed_version = response.json.getString("uuid");
+                String android_version = response.json.getString("android_version");
+                String android_min_version = response.json.getString("android_min_version");
+                String android_max_version = response.json.getString("android_max_version");
+                boolean ignoreVersion = this.ignoreAppVersion(android_version);
+                Boolean updatesAvailable = false;
 
-          if (response.json != null) {
-              String deployed_version = response.json.getString("uuid");
+                if(ignoreVersion) {
+                  logMessage("CHECK", "Ignoring update becuase the loaded version is equivalent");
+                } else {
+                  prefs.edit().putString("upstream_uuid", deployed_version).apply();
+                  updatesAvailable = !deployed_version.equals(our_version);
+                }
 
-              prefs.edit().putString("upstream_uuid", deployed_version).apply();
-
-              Boolean updatesAvailable = !deployed_version.equals(our_version);
-
-              callbackContext.success(updatesAvailable.toString());
-          }
+                callbackContext.success(updatesAvailable.toString());
+            }
         } catch (JSONException e) {
-          callbackContext.error("Error checking for updates.");
+            callbackContext.error("Error checking for updates.");
         }
 
         callbackContext.error(response.message);
+    }
 
+    private boolean ignoreAppVersion(String version) {
+        String device_version = this.deconstructVersionLabel(this.version_label)[0];
+        if(device_version.equals(version)) {
+            return true;
+        }
+        return false;
     }
 
     private void downloadUpdate(CallbackContext callbackContext) {
