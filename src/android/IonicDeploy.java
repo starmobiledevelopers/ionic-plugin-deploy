@@ -73,12 +73,12 @@ public class IonicDeploy extends CordovaPlugin {
   String version_label = null;
   boolean ignore_deploy = false;
 
-  final public static String NO_DEPLOY_LABEL = "NO_DEPLOY_LABEL";
-  final public static String NO_DEPLOY_AVAILABLE = "NO_DEPLOY_AVAILABLE";
-  final public static String NOTHING_TO_IGNORE = "NOTHING_TO_IGNORE";
-  final public static int VERSION_AHEAD = 1;
-  final public static int VERSION_MATCH = 0;
-  final public static int VERSION_BEHIND = -1;
+  public static final String NO_DEPLOY_LABEL = "NO_DEPLOY_LABEL";
+  public static final String NO_DEPLOY_AVAILABLE = "NO_DEPLOY_AVAILABLE";
+  public static final String NOTHING_TO_IGNORE = "NOTHING_TO_IGNORE";
+  public static final int VERSION_AHEAD = 1;
+  public static final int VERSION_MATCH = 0;
+  public static final int VERSION_BEHIND = -1;
 
   /**
    * Sets the context of the Command. This can then be used to do things like
