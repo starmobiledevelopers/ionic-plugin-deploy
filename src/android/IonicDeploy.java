@@ -45,26 +45,6 @@ class JsonHttpResponse {
   JSONObject json;
 }
 
-class AppVersion {
-  int major = 0;
-  int minor = 0;
-  int patch = 0;
-
-  public static AppVersion create(String version) {
-    AppVersion appVersion = new AppVersion();
-    int[] parts = appVersion.getParts(version);
-    appVersion.major = parts[0];
-    appVersion.minor = parts[1];
-    appVersion.patch = parts[2];
-    return appVersion;
-  }
-
-  public int[] getParts(String versionLabel) {
-    String[] parts = versionLabel.split(".");
-    int[] final_parts = { (int) Integer.valueOf(parts[0]), (int) Integer.valueOf(parts[1]), (int) Integer.valueOf(parts[2]) };
-    return final_parts;
-  }
-}
 
 public class IonicDeploy extends CordovaPlugin {
   String server = "https://apps.ionic.io";
