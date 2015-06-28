@@ -2,6 +2,7 @@
 #import <Cordova/CDV.h>
 #import "UNIRest.h"
 #import "SSZipArchive.h"
+#import "IonicConstant.h"
 
 @interface IonicDeploy()
 
@@ -12,6 +13,9 @@
 @property int progress;
 @property NSString *callbackId;
 @property NSString *appId;
+@property NSString *channel_tag;
+@property Boolean ignore_deploy; 
+@property NSString *version_label;
 @property NSString *currentUUID;
 @property dispatch_queue_t serialQueue;
 @property NSString *cordova_js_resource;
@@ -23,22 +27,79 @@ static NSOperationQueue *delegateQueue;
 typedef struct JsonHttpResponse {
     __unsafe_unretained NSString *message;
     __unsafe_unretained NSDictionary *json;
+    Boolean *error;
 } JsonHttpResponse;
 
 @implementation IonicDeploy
 
 - (void) pluginInitialize {
+    NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
     self.cordova_js_resource = [[NSBundle mainBundle] pathForResource:@"www/cordova" ofType:@"js"];
     self.serialQueue = dispatch_queue_create("Deploy Plugin Queue", NULL);
+    self.version_label = [prefs stringForKey:@"ionicdeploy_version_label"];
+    if(self.version_label != nil) {
+        self.version_label = NO_DEPLOY_LABEL;
+    }
+    [self initVersionChecks];
 }
 
-- (void)onReset {
+- (NSString *) getUUID {
+    NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+    NSString *uuid = [prefs stringForKey:@"uuid"];
+    if(uuid != nil) {
+        uuid = NO_DEPLOY_LABEL;
+    }
+    return uuid;
+}
+
+- (NSString *) constructVersionLabel: (NSString *) uuid {
+    NSString *version = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+    NSFileManager* fm = [NSFileManager defaultManager];
+    NSDictionary* attrs = [fm attributesOfItemAtPath:self.cordova_js_resource error:nil];
+
+    if (attrs != nil) {
+        NSDate *date = (NSDate*)[attrs objectForKey: NSFileCreationDate];
+        int int_timestamp = [date timeIntervalSince1970];
+        NSString *timestamp = [NSString stringWithFormat:@"%d", int_timestamp];
+        return [NSString stringWithFormat:@"%@:%@:%@", version, timestamp, uuid];
+    }
+    return NO_DEPLOY_LABEL;
+}
+
+- (void) updateVersionLabel: (NSString *)ignore_version {
+    NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+    NSString *ionicdeploy_version_label = [self constructVersionLabel:[self getUUID]];
+    [prefs setObject:ionicdeploy_version_label forKey: @"ionicdeploy_version_label"];
+    [prefs setObject:ignore_version forKey: @"ionicdeploy_version_ignore"];
+    [prefs synchronize];
+    self.version_label = ionicdeploy_version_label;
+}
+
+- (void) initVersionChecks {
+    NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+    NSString *uuid = [self getUUID];
+    NSString *ionicdeploy_version_label = [self constructVersionLabel:uuid];
+
+    NSLog(@"VERSION LABEL: %@", ionicdeploy_version_label);
+
+    if(![ionicdeploy_version_label isEqual: NO_DEPLOY_LABEL]) {
+        if(![self.version_label isEqual: ionicdeploy_version_label]) {
+            self.ignore_deploy = true;
+            [self updateVersionLabel:uuid];
+            [prefs setObject: @"" forKey: @"uuid"];
+            [prefs synchronize];
+        }
+    }
+}
+
+- (void) onReset {
     // redirect to latest deploy
     [self doRedirect];
 }
 
 - (void) check:(CDVInvokedUrlCommand *)command {
     self.appId = [command.arguments objectAtIndex:0];
+    self.channel_tag = [command.arguments objectAtIndex:1];
 
     if([self.appId isEqual: @"YOUR_APP_ID"]) {
         [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Please set your app id in app.js for YOUR_APP_ID before using $ionicDeploy"] callbackId:command.callbackId];
@@ -173,27 +234,39 @@ typedef struct JsonHttpResponse {
 
 
 - (void) doRedirect {
+    NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
     NSString *uuid = [[NSUserDefaults standardUserDefaults] objectForKey:@"uuid"];
-
-    dispatch_async(self.serialQueue, ^{
-    if ( uuid != nil && ![self.currentUUID isEqualToString: uuid] ) {
-        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
-        NSString *libraryDirectory = [paths objectAtIndex:0];
-
-
-        NSString *query = [NSString stringWithFormat:@"cordova_js_bootstrap_resource=%@", self.cordova_js_resource];
-        
-        NSURLComponents *components = [NSURLComponents new];
-        components.scheme = @"file";
-        components.path = [NSString stringWithFormat:@"%@/%@/index.html", libraryDirectory, uuid];
-        components.query = query;
-
-        self.currentUUID = uuid;
-
-        NSLog(@"Redirecting to: %@", components.URL.absoluteString);
-        [self.webView loadRequest: [NSURLRequest requestWithURL:components.URL] ];
+    NSString *ignore = [prefs stringForKey:@"ionicdeploy_version_ignore"];
+    if (ignore != nil) {
+        ignore = NOTHING_TO_IGNORE;
+    } 
+    NSLog(@"uuid is: %@", uuid);
+    if (self.ignore_deploy) {
+       NSLog(@"ignore deploy");
     }
-    });
+    NSLog(@"ignore version: %@", ignore);
+    if (![uuid isEqualToString:@""] && !self.ignore_deploy && ![uuid isEqualToString:ignore]) {
+
+        dispatch_async(self.serialQueue, ^{
+        if ( uuid != nil && ![self.currentUUID isEqualToString: uuid] ) {
+            NSArray *paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
+            NSString *libraryDirectory = [paths objectAtIndex:0];
+
+
+            NSString *query = [NSString stringWithFormat:@"cordova_js_bootstrap_resource=%@", self.cordova_js_resource];
+            
+            NSURLComponents *components = [NSURLComponents new];
+            components.scheme = @"file";
+            components.path = [NSString stringWithFormat:@"%@/%@/index.html", libraryDirectory, uuid];
+            components.query = query;
+
+            self.currentUUID = uuid;
+
+            NSLog(@"Redirecting to: %@", components.URL.absoluteString);
+            [self.webView loadRequest: [NSURLRequest requestWithURL:components.URL] ];
+        }
+        });
+    }
 }
 
 - (struct JsonHttpResponse) httpRequest:(NSString *) endpoint {
