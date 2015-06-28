@@ -21,12 +21,14 @@ import org.json.JSONObject;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -39,6 +41,7 @@ import java.util.zip.ZipInputStream;
 
 class JsonHttpResponse {
   String message;
+  Boolean error;
   JSONObject json;
 }
 
@@ -72,6 +75,7 @@ public class IonicDeploy extends CordovaPlugin {
   CordovaWebView v = null;
   String version_label = null;
   boolean ignore_deploy = false;
+  JSONObject last_update;
 
   public static final String NO_DEPLOY_LABEL = "NO_DEPLOY_LABEL";
   public static final String NO_DEPLOY_AVAILABLE = "NO_DEPLOY_AVAILABLE";
@@ -181,9 +185,10 @@ public class IonicDeploy extends CordovaPlugin {
       return true;
     } else if (action.equals("check")) {
       logMessage("CHECK", "Checking for updates");
+      final String channel_tag = args.getString(1);
       cordova.getThreadPool().execute(new Runnable() {
         public void run() {
-          checkForUpdates(callbackContext);
+          checkForUpdates(callbackContext, channel_tag);
         }
       });
       return true;
@@ -223,73 +228,63 @@ public class IonicDeploy extends CordovaPlugin {
     prefs.edit().putInt("version_count", version_count).apply();
   }
 
-  private void checkForUpdates(CallbackContext callbackContext) {
-    String endpoint = "/api/v1/app/" + this.app_id + "/updates/check";
+  private void checkForUpdates(CallbackContext callbackContext, final String channel_tag) {
 
-    // Request shared preferences for this app id
-    // Also, is there a way to pull the package name and fill it in on build?
-    SharedPreferences prefs = this.prefs;
-
-    String our_version = prefs.getString("uuid", "");
-
-    JsonHttpResponse response = httpRequest(endpoint);
+    this.last_update = null;
+    String ignore_version = this.prefs.getString("ionicdeploy_version_ignore", "");
+    String deployed_version = this.prefs.getString("uuid", "");
+    String loaded_version = this.prefs.getString("loaded_uuid", "");
+    JsonHttpResponse response = postDeviceDetails(deployed_version, channel_tag);
 
     try {
       if (response.json != null) {
-        String deployed_version = response.json.getString("uuid");
-        String android_version = response.json.getString("android_version");
-        String android_min_version = response.json.getString("android_min_version");
-        String android_max_version = response.json.getString("android_max_version");
-        boolean ignoreVersion = this.ignoreAppVersion(android_version);
-        Boolean updatesAvailable = false;
+        Boolean compatible = Boolean.valueOf(response.json.getString("compatible_binary"));
+        Boolean updatesAvailable = Boolean.valueOf(response.json.getString("update_available"));
 
-        if(ignoreVersion) {
-          logMessage("CHECK", "Ignoring update becuase the loaded version is equivalent");
-        } else {
-          prefs.edit().putString("upstream_uuid", deployed_version).apply();
-          updatesAvailable = !deployed_version.equals(our_version);
+        if(!compatible) {
+          logMessage("CHECK", "Refusing update due to incompatible binary version");
+        } else if(updatesAvailable) {
+          try {
+            JSONObject update = response.json.getJSONObject("update");
+            String update_uuid = update.getString("uuid");
+            if(!update_uuid.equals(ignore_version) && !update_uuid.equals(loaded_version)) {
+              prefs.edit().putString("upstream_uuid", update_uuid).apply();
+              this.last_update = update;
+            } else {
+              updatesAvailable = new Boolean(false);
+            }
+            
+          } catch (JSONException e) {
+            callbackContext.error("Update information is not available");
+          }
         }
 
-        callbackContext.success(updatesAvailable.toString());
+        if(updatesAvailable && compatible) {
+          callbackContext.success("true");
+        } else {
+          callbackContext.success("false");
+        }
       }
     } catch (JSONException e) {
+      logMessage("CHECK", e.toString());
       callbackContext.error("Error checking for updates.");
     }
-
-    callbackContext.error(response.message);
-  }
-
-  private boolean ignoreAppVersion(String version) {
-    String device_version = this.deconstructVersionLabel(this.version_label)[0];
-    if(device_version.equals(version)) {
-        return true;
-    }
-    return false;
   }
 
   private void downloadUpdate(CallbackContext callbackContext) {
-    String endpoint = "/api/v1/app/" + this.app_id + "/updates/download";
-
-    // First, let's check to see if we have the upstream version already
-    SharedPreferences prefs = this.prefs;
-
-    String upstream_uuid = prefs.getString("upstream_uuid", "");
-
+    String upstream_uuid = this.prefs.getString("upstream_uuid", "");
     if (upstream_uuid != "" && this.hasVersion(upstream_uuid)) {
       // Set the current version to the upstream uuid
       prefs.edit().putString("uuid", upstream_uuid).apply();
       callbackContext.success("false");
     } else {
       try {
-        JsonHttpResponse response = httpRequest(endpoint);
-
-        if (response.json != null) {
-          String url = response.json.getString("download_url");
+          String url = this.last_update.getString("url");
           final DownloadTask downloadTask = new DownloadTask(this.myContext, callbackContext);
           downloadTask.execute(url);
-        }
       } catch (JSONException e) {
-        callbackContext.error("Error starting download");
+        logMessage("DOWNLOAD", e.toString());
+        callbackContext.error("Error fetching download");
       }
     }
   }
@@ -396,32 +391,47 @@ public class IonicDeploy extends CordovaPlugin {
     }
   }
 
-  private JsonHttpResponse httpRequest(String endpoint) {
-    HttpURLConnection urlConnection = null;
+  private JsonHttpResponse postDeviceDetails(String uuid, final String channel_tag) {
+
+    String endpoint = "/api/v1/apps/" + this.app_id + "/updates/check/";
     JsonHttpResponse response = new JsonHttpResponse();
+    JSONObject json = new JSONObject();
 
     try {
-      URL url = new URL(this.server + endpoint);
-      urlConnection = (HttpURLConnection) url.openConnection();
+      json.put("device_app_version", this.deconstructVersionLabel(this.version_label)[0]);
+      json.put("device_deploy_uuid", uuid);
+      json.put("device_platform", "android");
+      json.put("channel_tag", channel_tag);
 
-      InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+      String params = json.toString();
+      byte[] postData = params.getBytes( StandardCharsets.UTF_8 );
+      int postDataLength = postData.length;
+
+      URL url = new URL(this.server + endpoint);
+      HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+      
+      conn.setDoOutput(true);
+      conn.setRequestMethod("POST");
+      conn.setRequestProperty("Content-Type", "application/json");
+      conn.setRequestProperty("Accept", "application/json");
+      conn.setRequestProperty("Charset", "utf-8");
+      conn.setRequestProperty("Content-Length", Integer.toString(postDataLength));
+
+      DataOutputStream wr = new DataOutputStream(conn.getOutputStream());
+      wr.write( postData );
+
+      InputStream in = new BufferedInputStream(conn.getInputStream());
       String result = readStream(in);
 
-      JSONObject json = new JSONObject(result);
+      JSONObject jsonResponse = new JSONObject(result);
 
-      response.json = json;
+      response.json = jsonResponse;
     } catch (JSONException e) {
-      response.message = "Invalid server response";
+      response.error = true;
     } catch (MalformedURLException e) {
-      response.message = "Malformed URL";
+      response.error = true;
     } catch (IOException e) {
-      response.message = "IO Exception";
-    } finally {
-      urlConnection.disconnect();
-    }
-
-    if(response.message != null) {
-      logMessage("HTTPR", "Message: " + response.message);
+      response.error = true;
     }
 
     return response;
