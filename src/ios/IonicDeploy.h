@@ -10,6 +10,10 @@
 
 - (NSString *) constructVersionLabel: (NSString *) uuid;
 
+- (NSArray *) deconstructVersionLabel: (NSString *) label;
+
+- (struct JsonHttpResponse) postDeviceDetails;
+
 - (void) updateVersionLabel:(NSString *)uuid;
 
 - (void) initVersionChecks;
@@ -21,8 +25,6 @@
 - (void) extract:(CDVInvokedUrlCommand *)command;
 
 - (void) redirect:(CDVInvokedUrlCommand *)command;
-
-- (struct JsonHttpResponse) httpRequest:(NSString *) endpoint;
 
 - (void) doRedirect;
 
