@@ -1,6 +1,6 @@
 {
   "name": "ionic-plugin-deploy",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Ionic Deploy Plugin",
   "cordova": {
     "id": "ionic-plugin-deploy",
