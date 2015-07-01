@@ -2,11 +2,21 @@
 #import "DownloadManager.h"
 #import "SSZipArchive.h"
 
-//@interface IonicDeploy : CDVPlugin <NSURLConnectionDataDelegate>
 @interface IonicDeploy : CDVPlugin <DownloadManagerDelegate, SSZipArchiveDelegate>
 
 @property (strong, nonatomic) DownloadManager *downloadManager;
 
+- (NSString *) getUUID;
+
+- (NSString *) constructVersionLabel: (NSString *) uuid;
+
+- (NSArray *) deconstructVersionLabel: (NSString *) label;
+
+- (struct JsonHttpResponse) postDeviceDetails;
+
+- (void) updateVersionLabel:(NSString *)uuid;
+
+- (void) initVersionChecks;
 
 - (void) check:(CDVInvokedUrlCommand *)command;
 
@@ -15,8 +25,6 @@
 - (void) extract:(CDVInvokedUrlCommand *)command;
 
 - (void) redirect:(CDVInvokedUrlCommand *)command;
-
-- (struct JsonHttpResponse) httpRequest:(NSString *) endpoint;
 
 - (void) doRedirect;
 

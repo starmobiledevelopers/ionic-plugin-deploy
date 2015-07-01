@@ -8,13 +8,13 @@ var IonicDeploy = {
       [app_id]
     );
   },
-  check: function(app_id, success, failure) {
+  check: function(app_id, channel_tag, success, failure) {
     cordova.exec(
       success,
       failure,
       'IonicDeploy',
       'check',
-      [app_id]
+      [app_id, channel_tag]
     );
   },
   download: function(app_id, success, failure) {
