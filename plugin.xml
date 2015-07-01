@@ -2,7 +2,7 @@
 
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
     id="com.ionic.deploy"
-    version="0.1.6">
+    version="0.2.1">
     <name>IonicDeploy</name>
     <description>Ionic Deploy Plugin</description>
     <license>Apache 2.0</license>
