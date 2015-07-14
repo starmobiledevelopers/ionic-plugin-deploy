@@ -231,6 +231,7 @@ typedef struct JsonHttpResponse {
         NSLog(@"Unzipping...");
 
         [SSZipArchive unzipFileAtPath:filePath toDestination:extractPath delegate:self];
+        [self updateVersionLabel:NOTHING_TO_IGNORE];
         BOOL success = [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
         NSLog(@"Unzipped...");
         NSLog(@"Removing www.zip %d", success);
@@ -245,6 +246,17 @@ typedef struct JsonHttpResponse {
     [self doRedirect];
 
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+}
+
+- (void) info:(CDVInvokedUrlCommand *)command {
+    NSMutableDictionary *json = [[NSMutableDictionary alloc] init];
+    NSString *uuid = [self getUUID];
+    if ([uuid isEqualToString:@""]) {
+        uuid = NO_DEPLOY_LABEL;
+    }
+    [json setObject:uuid forKey:@"deploy_uuid"];
+    [json setObject:[[self deconstructVersionLabel:self.version_label] firstObject] forKey:@"binary_version"];
+    [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:json] callbackId:command.callbackId];
 }
 
 

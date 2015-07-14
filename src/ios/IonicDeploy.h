@@ -26,6 +26,8 @@
 
 - (void) redirect:(CDVInvokedUrlCommand *)command;
 
+- (void) info:(CDVInvokedUrlCommand *)command;
+
 - (void) doRedirect;
 
 - (NSMutableArray *) getMyVersions;

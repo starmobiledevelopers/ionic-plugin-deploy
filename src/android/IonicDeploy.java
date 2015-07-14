@@ -192,9 +192,25 @@ public class IonicDeploy extends CordovaPlugin {
       final String uuid = this.getUUID("");
       this.redirect(uuid, true);
       return true;
+    } else if (action.equals("info")) {
+      this.info(callbackContext);
+      return true;
     } else {
       return false;
     }
+  }
+
+  private void info(CallbackContext callbackContext) {
+    JSONObject json = new JSONObject();
+
+    try {
+      json.put("deploy_uuid", this.getUUID());
+      json.put("binary_version", this.deconstructVersionLabel(this.version_label)[0]);
+    } catch (JSONException e) {
+      callbackContext.error("Unable to gather deploy info: " + e.toString());
+    }
+
+    callbackContext.success(json);
   }
 
   private void initApp(String app_id) {

@@ -43,6 +43,15 @@ var IonicDeploy = {
   		'redirect',
   		[app_id]
   	);
+  },
+  info: function(app_id, success, failure) {
+    cordova.exec(
+      success,
+      failure,
+      'IonicDeploy',
+      'info',
+      [app_id]
+    );
   }
 }
 
