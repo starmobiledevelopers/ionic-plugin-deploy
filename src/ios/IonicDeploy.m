@@ -149,12 +149,15 @@ typedef struct JsonHttpResponse {
             }
 
             if (update_available == [NSNumber numberWithBool:YES]) {
-                NSLog(@"update is true?");
+                NSLog(@"update is true");
                 pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"true"];
             } else {
-                NSLog(@"update is false?");
+                NSLog(@"update is false");
                 pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"false"];
             }
+        } else {
+            NSLog(@"unable to check for updates");
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"false"];
         }
 
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];

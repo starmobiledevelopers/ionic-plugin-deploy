@@ -28,7 +28,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -244,6 +243,9 @@ public class IonicDeploy extends CordovaPlugin {
         } else {
           callbackContext.success("false");
         }
+      } else {
+        logMessage("CHECK", "Unable to check for updates.");
+        callbackContext.success("false");
       }
     } catch (JSONException e) {
       logMessage("CHECK", e.toString());
@@ -384,7 +386,7 @@ public class IonicDeploy extends CordovaPlugin {
       json.put("channel_tag", channel_tag);
 
       String params = json.toString();
-      byte[] postData = params.getBytes( StandardCharsets.UTF_8 );
+      byte[] postData = params.getBytes("UTF-8");
       int postDataLength = postData.length;
 
       URL url = new URL(this.server + endpoint);
