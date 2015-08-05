@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/driftyco/ionic-plugins-deploy.git"
+    "url": "git+https://github.com/driftyco/ionic-plugin-deploy.git"
   },
   "keywords": [
     "Ionic",
@@ -23,7 +23,7 @@
   "author": "Ionic",
   "license": "Apache 2.0",
   "bugs": {
-    "url": "https://github.com/driftyco/ionic-plugins-deploy/issues"
+    "url": "https://github.com/driftyco/ionic-plugin-deploy/issues"
   },
-  "homepage": "https://github.com/driftyco/ionic-plugins-deploy#readme"
+  "homepage": "https://github.com/driftyco/ionic-plugin-deploy#readme"
 }
