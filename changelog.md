@@ -1,6 +1,10 @@
 Changelog
 =========
 
+## 0.3.0
+
+* Changed plugin id from `com.ionic.deploy` to `ionic-plugin-deploy`
+
 ## 0.2.3
 
 * Adding deploy info. Fixes #11
