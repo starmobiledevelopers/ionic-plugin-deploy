@@ -251,11 +251,14 @@ typedef struct JsonHttpResponse {
 - (void) info:(CDVInvokedUrlCommand *)command {
     NSMutableDictionary *json = [[NSMutableDictionary alloc] init];
     NSString *uuid = [self getUUID];
+    NSMutableArray *downloaded_versions = [self getMyVersions];
+
     if ([uuid isEqualToString:@""]) {
         uuid = NO_DEPLOY_LABEL;
     }
     [json setObject:uuid forKey:@"deploy_uuid"];
     [json setObject:[[self deconstructVersionLabel:self.version_label] firstObject] forKey:@"binary_version"];
+    [json setObject:downloaded_versions forKey:@"downloaded_versions"];
     [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:json] callbackId:command.callbackId];
 }
 

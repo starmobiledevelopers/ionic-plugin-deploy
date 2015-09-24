@@ -206,6 +206,10 @@ public class IonicDeploy extends CordovaPlugin {
     try {
       json.put("deploy_uuid", this.getUUID());
       json.put("binary_version", this.deconstructVersionLabel(this.version_label)[0]);
+      String deployed_version = this.prefs.getString("uuid", "");
+      Set<String> downloaded_versions = this.getMyVersions();
+      json.put("deployed_version", deployed_version);
+      json.put("downloaded_versions", downloaded_versions);
     } catch (JSONException e) {
       callbackContext.error("Unable to gather deploy info: " + e.toString());
     }
